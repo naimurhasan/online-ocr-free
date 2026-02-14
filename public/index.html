@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium OCR Converter</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="background-animate"></div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-magic"></i> OCR Magic</h1>
+            <p>Convert Images & PDFs to Text Instantly</p>
+        </header>
+
+        <main>
+            <div class="upload-card">
+                <div class="drop-zone" id="dropZone">
+                    <div class="icon-container">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3>Drag & Drop Files Here</h3>
+                    <p>or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept="image/*,application/pdf" hidden>
+                </div>
+
+                <div class="controls">
+                    <div class="language-select">
+                        <label for="language"><i class="fas fa-language"></i> Language</label>
+                        <select id="language">
+                            <option value="ben" selected>Bangla</option>
+                            <option value="eng+ben">Bangla + English (Mixed)</option>
+                            <option value="eng">English</option>
+                        </select>
+                    </div>
+
+                    <div id="emailContainer" class="email-input hidden">
+                        <label for="email"><i class="fas fa-envelope"></i> Email for Batch Results</label>
+                        <input type="email" id="email" placeholder="Enter your email address">
+                        <small>Required for batch processing (2+ files)</small>
+                    </div>
+                </div>
+
+                <button id="convertBtn" class="btn-primary" disabled>
+                    <span class="btn-text">Convert Now</span>
+                    <span class="btn-loading hidden"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
+                </button>
+            </div>
+
+            <div id="fileList" class="file-list hidden">
+                <!-- File items will be added here -->
+            </div>
+
+            <div id="resultArea" class="result-card hidden">
+                <div class="result-header">
+                    <h3><i class="fas fa-file-alt"></i> Extracted Text</h3>
+                    <button class="btn-copy" id="copyBtn" title="Copy to Clipboard"><i class="far fa-copy"></i></button>
+                </div>
+                <textarea id="outputText" readonly placeholder="Result will appear here..."></textarea>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 OCR Magic. Powered by Tesseract.js</p>
+        </footer>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>

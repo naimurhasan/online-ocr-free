@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Environment variables
+.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# User Uploads and Temporary files
+uploads/
+temp/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Optional: Ignore trained data if they are large and downloaded
+# *.traineddata
