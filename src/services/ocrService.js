@@ -1,9 +1,10 @@
 const Tesseract = require('tesseract.js');
 const path = require('path');
 const sharp = require('sharp');
-const { execFile } = require('child_process');
+
 const fs = require('fs').promises;
 const { convertPdfToImages, deleteFile } = require('../utils/fileUtils');
+const { cleanText } = require('../utils/textUtils');
 
 const TESSERACT_OPTS = {
     langPath: path.resolve('./tessdata'),
@@ -41,9 +42,13 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
             withoutEnlargement: false
         })
         .normalize()
+        // Matra Fix: Thicken text
+        // 1. Sharpen to enhance edges
         .sharpen()
-        .median(3)
-        .threshold(128)
+        // 2. Blur to spread black pixels (dilation simulation)
+        .blur(0.5)
+        // 3. High Threshold to capture the spread (gray) pixels as black
+        .threshold(160)
         .toFile(finalPath);
 
     console.log('✅ Optimized Processing Complete:', finalPath);
@@ -81,6 +86,8 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
     console.log('✅ Advanced Processing Complete:', finalPath);
     return finalPath;
 };
+
+
 
 const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true) => {
     let textResult = '';
@@ -137,7 +144,11 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true) =
     console.log('\n✨ Text extraction complete!');
     console.log('📁 Check ./temp folder for all preprocessing steps');
 
-    return textResult;
+    // Apply rule-based cleaning
+    console.log('🧹 Running Rule-Based Cleaner...');
+    const cleanedText = cleanText(textResult);
+
+    return cleanedText;
 };
 
 const clearTempFolder = async () => {

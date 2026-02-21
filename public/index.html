@@ -4,71 +4,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium OCR Converter</title>
+    <title>OCR Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 </head>
 
 <body>
-    <div class="background-animate"></div>
 
-    <div class="container">
-        <header>
-            <h1><i class="fas fa-magic"></i> OCR Magic</h1>
-            <p>Convert Images & PDFs to Text Instantly</p>
-        </header>
+    <div class="app-container">
+        <!-- Header / Toolbar -->
+        <header class="toolbar">
+            <div class="logo">
+                <i class="fas fa-magic"></i> OCR Magic
+            </div>
 
-        <main>
-            <div class="upload-card">
-                <div class="drop-zone" id="dropZone">
-                    <div class="icon-container">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3>Drag & Drop Files Here</h3>
-                    <p>or click to browse</p>
-                    <input type="file" id="fileInput" multiple accept="image/*,application/pdf" hidden>
+            <div class="global-actions">
+                <div class="language-select">
+                    <select id="language">
+                        <!-- Bangla is usually best for mixed content too if trained well, but let's keep options -->
+                        <option value="ben" selected>Bangla</option>
+                        <option value="eng+ben">Bangla + English</option>
+                        <option value="eng">English</option>
+                    </select>
                 </div>
 
-                <div class="controls">
-                    <div class="language-select">
-                        <label for="language"><i class="fas fa-language"></i> Language</label>
-                        <select id="language">
-                            <option value="ben" selected>Bangla</option>
-                            <option value="eng+ben">Bangla + English (Mixed)</option>
-                            <option value="eng">English</option>
-                        </select>
-                    </div>
+                <button id="addFilesBtn" class="btn-secondary">
+                    <i class="fas fa-plus"></i> Add Files
+                </button>
+                <input type="file" id="fileInput" multiple accept="image/*,application/pdf" hidden>
 
-                    <div id="emailContainer" class="email-input hidden">
-                        <label for="email"><i class="fas fa-envelope"></i> Email for Batch Results</label>
-                        <input type="email" id="email" placeholder="Enter your email address">
-                        <small>Required for batch processing (2+ files)</small>
-                    </div>
-                </div>
+                <button id="downloadAllBtn" class="btn-action" disabled>
+                    <i class="fas fa-download"></i> Download All (Zip)
+                </button>
 
-                <button id="convertBtn" class="btn-primary" disabled>
-                    <span class="btn-text">Convert Now</span>
-                    <span class="btn-loading hidden"><i class="fas fa-spinner fa-spin"></i> Processing...</span>
+                <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
+                    <i class="fas fa-moon"></i>
                 </button>
             </div>
+        </header>
 
-            <div id="fileList" class="file-list hidden">
-                <!-- File items will be added here -->
-            </div>
+        <!-- Main 3-Column Layout -->
+        <main class="dashboard-grid">
 
-            <div id="resultArea" class="result-card hidden">
-                <div class="result-header">
-                    <h3><i class="fas fa-file-alt"></i> Extracted Text</h3>
-                    <button class="btn-copy" id="copyBtn" title="Copy to Clipboard"><i class="far fa-copy"></i></button>
+            <!-- Column 1: File Queue -->
+            <section class="col-files">
+                <div class="col-header">
+                    <h3>Files (<span id="fileCount">0</span>)</h3>
+                    <button id="clearAllBtn" class="btn-text-only">Clear</button>
                 </div>
-                <textarea id="outputText" readonly placeholder="Result will appear here..."></textarea>
-            </div>
-        </main>
+                <div id="fileList" class="file-list">
+                    <!-- Empty State -->
+                    <div class="empty-state">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drop files here</p>
+                    </div>
+                    <!-- File Items injected here -->
+                </div>
+            </section>
 
-        <footer>
-            <p>&copy; 2024 OCR Magic. Powered by Tesseract.js</p>
-        </footer>
+            <!-- Column 2: Preview -->
+            <section class="col-preview">
+                <div class="col-header">
+                    <h3>Preview</h3>
+                    <span id="previewName" class="file-meta">No file selected</span>
+                </div>
+                <div class="preview-container" id="previewContainer">
+                    <!-- Image or PDF Canvas goes here -->
+                    <div class="empty-preview">
+                        <p>Select a file to preview</p>
+                    </div>
+                </div>
+                <!-- Pagination Controls (Hidden by default) -->
+                <div id="paginationControls" class="pagination-controls hidden">
+                    <button id="prevPageBtn" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
+                    <span id="pageIndicator" class="page-indicator">Page 1 of 1</span>
+                    <button id="nextPageBtn" class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </section>
+
+            <!-- Column 3: Result -->
+            <section class="col-result">
+                <div class="col-header">
+                    <h3>Extracted Text</h3>
+                    <div class="result-actions">
+                        <button id="copyBtn" class="btn-icon" title="Copy"><i class="far fa-copy"></i></button>
+                        <button id="downloadTextBtn" class="btn-icon" title="Download .txt"><i
+                                class="fas fa-file-download"></i></button>
+                    </div>
+                </div>
+                <textarea id="outputText" placeholder="OCR result will appear here..." spellcheck="false"></textarea>
+
+                <div class="action-bar">
+                    <button id="processBtn" class="btn-primary">
+                        Start OCR Processing
+                    </button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>PDF Settings</h3>
+            <p id="settingsFileName" class="settings-file-name"></p>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label for="startPage">Start Page (optional):</label>
+                    <input type="number" id="startPage" min="1" placeholder="e.g. 1">
+                </div>
+                <div class="form-group">
+                    <label for="endPage">End Page (optional):</label>
+                    <input type="number" id="endPage" min="1" placeholder="e.g. 5">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancelSettingsBtn" class="btn-secondary">Cancel</button>
+                <button id="saveSettingsBtn" class="btn-primary">Save</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/main.js"></script>

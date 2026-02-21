@@ -40,6 +40,44 @@ exports.processBatch = async (req, res) => {
     processBatchFiles(files, lang || 'eng+ben', email);
 };
 
+const archiver = require('archiver');
+
+exports.downloadZip = async (req, res) => {
+    const { files } = req.body; // Expects [{ filename: 'doc.txt', text: 'content' }, ...]
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ error: 'No content to zip' });
+    }
+
+    res.attachment('ocr_results.zip');
+
+    const archive = archiver('zip', {
+        zlib: { level: 9 } // Sets the compression level.
+    });
+
+    archive.on('warning', function (err) {
+        if (err.code === 'ENOENT') {
+            console.warn(err);
+        } else {
+            throw err;
+        }
+    });
+
+    archive.on('error', function (err) {
+        res.status(500).send({ error: err.message });
+    });
+
+    archive.pipe(res);
+
+    for (const file of files) {
+        if (file.filename && file.text) {
+            archive.append(file.text, { name: file.filename });
+        }
+    }
+
+    archive.finalize();
+};
+
 async function processBatchFiles(files, langKey, email) {
     let results = [];
     const lang = langKey || 'eng+ben';
@@ -55,7 +93,7 @@ async function processBatchFiles(files, langKey, email) {
             deleteFile(file.path);
         }
     }
-
+    // ... email logic ... (omitted for brevity, assume it's same)
     if (email && results.length > 0) {
         await sendEmail(email, results);
     }
