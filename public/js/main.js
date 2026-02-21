@@ -17,6 +17,8 @@ const confirmSplitBtn = document.getElementById('confirmSplitBtn');
 const columnsModal = document.getElementById('columnsModal');
 const cancelColumnsBtn = document.getElementById('cancelColumnsBtn');
 const columnOptions = document.querySelectorAll('.column-option');
+const columnPdfPageControl = document.getElementById('columnPdfPageControl');
+const columnPdfPageNum = document.getElementById('columnPdfPageNum');
 const settingsModal = document.getElementById('settingsModal');
 const settingsFileName = document.getElementById('settingsFileName');
 const startPageInput = document.getElementById('startPage');
@@ -114,8 +116,28 @@ const setupEventListeners = () => {
     });
 
     columnOptions.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const cols = parseInt(btn.dataset.cols, 10);
+
+            // If it's an unprocessed PDF, we want to extract the specific active page the user is looking at
+            const file = filesData.find(f => f.id === activeFileId);
+            if (cols > 1 && file && file.type === 'pdf' && file.pages.length === 0) {
+                const targetPage = file.activeViewerPage || 1;
+                // Temporarily disable buttons to show it's extracting
+                columnsModal.classList.add('opacity-50');
+                columnsModal.style.pointerEvents = 'none';
+
+                // Keep the old url so we can revoke it
+                const oldUrl = file.previewUrl;
+                await generatePdfThumbnail(file, targetPage);
+                if (oldUrl && oldUrl !== 'https://placehold.co/50x70?text=PDF') {
+                    URL.revokeObjectURL(oldUrl);
+                }
+
+                columnsModal.classList.remove('opacity-50');
+                columnsModal.style.pointerEvents = 'auto';
+            }
+
             setupColumns(cols);
             columnsModal.classList.add('hidden');
         });
@@ -234,6 +256,7 @@ const addFileToState = (file, name) => {
         currentPage: 0, // 0-indexed
         startPage: null, // For PDFs
         endPage: null, // For PDFs
+        activeViewerPage: 1, // For tracking the actual visible page in the custom PDF DOM viewer
         // Use a generic placeholder or the image URL
         previewUrl: isPdf ? 'https://placehold.co/50x70?text=PDF' : URL.createObjectURL(file),
         pdfViewerUrl: isPdf ? URL.createObjectURL(file) : null
@@ -247,11 +270,15 @@ const addFileToState = (file, name) => {
     filesData.push(fileObj);
 };
 
-const generatePdfThumbnail = async (fileObj) => {
+const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
     try {
         const arrayBuffer = await fileObj.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        const page = await pdf.getPage(1);
+
+        // Ensure requested page exists
+        const safePageNum = Math.min(Math.max(1, pageNum), pdf.numPages);
+        const page = await pdf.getPage(safePageNum);
+
         const viewport = page.getViewport({ scale: 0.5 }); // Smaller scale for thumbnail
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -427,6 +454,7 @@ const applyTransform = () => {
 };
 
 const handleZoomWheel = (e) => {
+    if (e.target.closest('.pdf-custom-viewer')) return; // Allow native scroll inside custom PDF viewer
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     zoomLevel = Math.min(5, Math.max(0.2, zoomLevel + delta));
@@ -434,7 +462,7 @@ const handleZoomWheel = (e) => {
 };
 
 const handlePanStart = (e) => {
-    if (e.target.closest('.zoom-controls')) return;
+    if (e.target.closest('.zoom-controls') || e.target.closest('.pdf-custom-viewer')) return;
     isPanning = true;
     panStartX = e.clientX - panX;
     panStartY = e.clientY - panY;
@@ -503,18 +531,94 @@ const renderPreview = () => {
             }
         } else {
             paginationControls.classList.add('hidden');
-            if (file.pdfViewerUrl) {
-                previewContainer.innerHTML = `
-                    <object data="${file.pdfViewerUrl}" type="application/pdf" width="100%" height="100%" style="border: none; display: block;">
-                        <iframe src="${file.pdfViewerUrl}" width="100%" height="100%" style="border: none;">
-                            <p>Your browser does not support PDFs. <a href="${file.pdfViewerUrl}">Download the PDF</a>.</p>
-                        </iframe>
-                    </object>
-                `;
+            if (file.type === 'pdf' && globalColumnsConfigs.numColumns === 1) {
+                // Render our custom scrolling PDF.js viewer instead of a native <object> tag
+                previewContainer.innerHTML = '<div class="pdf-custom-viewer" id="customPdfViewer"></div>';
+                const customViewer = document.getElementById('customPdfViewer');
+
+                // Fetch the PDF to know how many pages
+                file.file.arrayBuffer().then(arrayBuffer => {
+                    return pdfjsLib.getDocument(arrayBuffer).promise;
+                }).then(pdf => {
+                    // Create an intersection observer to detect active page and trigger rendering
+                    const observer = new IntersectionObserver((entries) => {
+                        let mostVisiblePage = file.activeViewerPage;
+                        let maxRatio = 0;
+
+                        entries.forEach(entry => {
+                            // If it's intersecting, and hasn't been rendered yet, render it
+                            const pageNum = parseInt(entry.target.dataset.page);
+                            if (entry.isIntersecting) {
+                                if (!entry.target.dataset.rendered) {
+                                    entry.target.dataset.rendered = 'true';
+                                    entry.target.innerHTML = ''; // Clear placeholder text
+                                    const canvas = document.createElement('canvas');
+                                    entry.target.appendChild(canvas);
+
+                                    pdf.getPage(pageNum).then(page => {
+                                        const viewport = page.getViewport({ scale: 1.5 });
+                                        canvas.height = viewport.height;
+                                        canvas.width = viewport.width;
+                                        // Keep container size matched exactly to canvas
+                                        entry.target.style.height = viewport.height + 'px';
+
+                                        const context = canvas.getContext('2d');
+                                        page.render({ canvasContext: context, viewport: viewport });
+                                    });
+                                }
+
+                                // Track which page is most visible
+                                if (entry.intersectionRatio > maxRatio) {
+                                    maxRatio = entry.intersectionRatio;
+                                    mostVisiblePage = pageNum;
+                                }
+                            }
+                        });
+
+                        if (maxRatio > 0 && mostVisiblePage !== file.activeViewerPage) {
+                            file.activeViewerPage = mostVisiblePage;
+                        }
+                    }, {
+                        root: customViewer,
+                        threshold: [0.1, 0.5, 0.9]
+                    });
+
+                    // Create placeholder boxes for every page
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const pageContainer = document.createElement('div');
+                        pageContainer.className = 'pdf-page-container';
+                        pageContainer.dataset.page = i;
+                        // Give it a generic minimum height so scrolling works initially before lazy load
+                        pageContainer.style.height = '800px';
+                        pageContainer.style.width = '100%';
+                        pageContainer.style.maxWidth = '800px';
+
+                        customViewer.appendChild(pageContainer);
+                        observer.observe(pageContainer);
+                    }
+
+                    // Scroll to the last known active page if restarting viewer
+                    if (file.activeViewerPage > 1) {
+                        setTimeout(() => {
+                            const target = customViewer.querySelector(`[data-page="${file.activeViewerPage}"]`);
+                            if (target) {
+                                target.scrollIntoView();
+                            }
+                        }, 100);
+                    }
+                }).catch(err => {
+                    console.error("Error loading custom PDF viewer:", err);
+                    previewContainer.innerHTML = '<div class="empty-preview"><p>Error loading PDF.</p></div>';
+                });
+
+                return;
+            } else if (file.previewUrl && file.previewUrl !== 'https://placehold.co/50x70?text=PDF') {
+                src = file.previewUrl;
+                // Allow it to fall through to the image renderer below
             } else {
                 previewContainer.innerHTML = '<div class="empty-preview"><p>Generating preview...</p></div>';
+                return;
             }
-            return;
         }
     } else {
         src = file.previewUrl;
@@ -584,18 +688,8 @@ const setupColumns = (cols) => {
         confirmSplitBtn.classList.remove('hidden');
     }
 
-    // Switch preview to image view if it was PDF to allow overlaying splitters easily
-    const file = filesData.find(f => f.id === activeFileId);
-    if (file && file.type === 'pdf' && file.pages.length === 0 && cols > 1) {
-        // Temporarily clear pdfViewerUrl to force it to render the thumbnail image preview
-        // Note: This is an approximation for setup. Alternatively, we just advise processing first.
-        const originalViewerUrl = file.pdfViewerUrl;
-        file.pdfViewerUrl = null;
-        renderPreview();
-        file.pdfViewerUrl = originalViewerUrl; // Restore it for later
-    } else {
-        renderPreview();
-    }
+    // Render preview to show/hide splitters
+    renderPreview();
 };
 
 const setupSplitterDrag = (splitter, container) => {
