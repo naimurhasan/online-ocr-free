@@ -107,6 +107,16 @@
                     <button id="processBtn" class="btn-primary">
                         Start OCR Processing
                     </button>
+                    <div id="overallProgress" class="overall-progress hidden">
+                        <div class="overall-progress-head">
+                            <span id="overallProgressText">Overall: 0 / 0</span>
+                            <span id="overallEtaText">ETA --</span>
+                        </div>
+                        <div class="overall-progress-track">
+                            <div id="overallProgressFill" class="overall-progress-fill"></div>
+                        </div>
+                        <div id="overallProgressCurrent" class="overall-progress-current">Waiting to start...</div>
+                    </div>
                 </div>
             </section>
 
@@ -152,6 +162,32 @@
             </div>
             <div class="modal-actions" style="margin-top: 1.5rem;">
                 <button id="cancelColumnsBtn" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="reviewModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Review Before Start</h3>
+            <p class="settings-file-name">Please confirm processing setup.</p>
+            <div class="review-grid">
+                <div class="review-row">
+                    <span>Language</span>
+                    <strong id="reviewLanguage">-</strong>
+                </div>
+                <div class="review-row">
+                    <span>Columns</span>
+                    <strong id="reviewColumns">-</strong>
+                </div>
+                <div class="review-row">
+                    <span>Selected items</span>
+                    <strong id="reviewSelectionCount">-</strong>
+                </div>
+            </div>
+            <div class="modal-actions" style="margin-top: 1.5rem;">
+                <button id="cancelReviewBtn" class="btn-secondary">Cancel</button>
+                <button id="confirmReviewBtn" class="btn-primary">Start All</button>
             </div>
         </div>
     </div>

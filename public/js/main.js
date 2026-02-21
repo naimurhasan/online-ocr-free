@@ -37,6 +37,17 @@ const copyBtn = document.getElementById('copyBtn');
 const themeToggleBtn = document.getElementById('themeToggle');
 const languageSelect = document.getElementById('language');
 const fileCountSpan = document.getElementById('fileCount');
+const reviewModal = document.getElementById('reviewModal');
+const cancelReviewBtn = document.getElementById('cancelReviewBtn');
+const confirmReviewBtn = document.getElementById('confirmReviewBtn');
+const reviewLanguage = document.getElementById('reviewLanguage');
+const reviewColumns = document.getElementById('reviewColumns');
+const reviewSelectionCount = document.getElementById('reviewSelectionCount');
+const overallProgress = document.getElementById('overallProgress');
+const overallProgressText = document.getElementById('overallProgressText');
+const overallEtaText = document.getElementById('overallEtaText');
+const overallProgressFill = document.getElementById('overallProgressFill');
+const overallProgressCurrent = document.getElementById('overallProgressCurrent');
 
 // --- Initialization ---
 // Global Columns Configuration
@@ -46,9 +57,22 @@ let globalColumnsConfigs = {
     splitPositions: [] // percentages [0..1]
 };
 
+let batchProgress = {
+    running: false,
+    totalFiles: 0,
+    completedFiles: 0,
+    startedAt: 0,
+    currentFileName: '',
+    lastRunDurationMs: 0
+};
+
+let progressTimerId = null;
+
 const init = () => {
     initTheme();
     setupEventListeners();
+    updateOverallProgressUI();
+    updateGlobalButtons();
 };
 
 const setupEventListeners = () => {
@@ -59,7 +83,7 @@ const setupEventListeners = () => {
     // Drag & Drop
     fileList.addEventListener('click', (e) => {
         // If clicking the empty state (not the list container itself), open file dialog
-        if (e.target.closest('.empty-state')) {
+        if (e.target.closest('.empty-state') && !batchProgress.running) {
             fileInput.click();
         }
     });
@@ -77,6 +101,7 @@ const setupEventListeners = () => {
 
     fileList.addEventListener('drop', (e) => {
         e.preventDefault();
+        if (batchProgress.running) return;
         fileList.classList.remove('drag-over');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             fileInput.files = e.dataTransfer.files; // Optional: sync input
@@ -89,8 +114,10 @@ const setupEventListeners = () => {
     downloadAllBtn.addEventListener('click', downloadAllZip);
 
     // Result Actions
-    processBtn.addEventListener('click', processActiveFile);
+    processBtn.addEventListener('click', handleProcessClick);
     copyBtn.addEventListener('click', copyToClipboard);
+    cancelReviewBtn.addEventListener('click', closeReviewModal);
+    confirmReviewBtn.addEventListener('click', startBatchProcessing);
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -191,6 +218,7 @@ const updateThemeIcon = (isDark) => {
 
 // --- File Handling ---
 const handleFileSelect = async (e) => {
+    if (batchProgress.running) return;
     const newFiles = Array.from(e.target.files);
     if (newFiles.length === 0) return;
 
@@ -317,13 +345,29 @@ const selectFile = (id) => {
     renderResult();
 };
 
+const revokeFileResources = (file) => {
+    if (!file) return;
+
+    if (file.previewUrl && file.previewUrl !== 'https://placehold.co/50x70?text=PDF') {
+        URL.revokeObjectURL(file.previewUrl);
+    }
+    if (file.pdfViewerUrl) {
+        URL.revokeObjectURL(file.pdfViewerUrl);
+    }
+    if (Array.isArray(file.pages)) {
+        file.pages.forEach(page => {
+            if (page.imgUrl) URL.revokeObjectURL(page.imgUrl);
+        });
+    }
+};
+
 const clearAll = () => {
-    filesData.forEach(f => {
-        URL.revokeObjectURL(f.previewUrl);
-        if (f.pdfViewerUrl) URL.revokeObjectURL(f.pdfViewerUrl);
-    });
+    if (batchProgress.running) return;
+    filesData.forEach(revokeFileResources);
     filesData = [];
     activeFileId = null;
+    closeReviewModal();
+    resetBatchProgressUI();
     renderFileList();
     renderPreview();
     renderResult();
@@ -331,12 +375,10 @@ const clearAll = () => {
 };
 
 const removeFile = (id) => {
+    if (batchProgress.running) return;
     const fileIndex = filesData.findIndex(f => f.id === id);
     if (fileIndex !== -1) {
-        URL.revokeObjectURL(filesData[fileIndex].previewUrl);
-        if (filesData[fileIndex].pdfViewerUrl) {
-            URL.revokeObjectURL(filesData[fileIndex].pdfViewerUrl);
-        }
+        revokeFileResources(filesData[fileIndex]);
         filesData.splice(fileIndex, 1);
 
         if (activeFileId === id) {
@@ -359,6 +401,7 @@ const removeFile = (id) => {
 let settingsFileId = null;
 
 const openSettings = (id) => {
+    if (batchProgress.running) return;
     const file = filesData.find(f => f.id === id);
     if (!file) return;
 
@@ -408,7 +451,10 @@ const renderFileList = () => {
         <i class="fas fa-plus"></i>
         <span class="file-name">Add more files</span>
     `;
-    addMoreItem.onclick = () => fileInput.click();
+    addMoreItem.onclick = () => {
+        if (batchProgress.running) return;
+        fileInput.click();
+    };
     fileList.appendChild(addMoreItem);
 
     filesData.forEach(file => {
@@ -421,14 +467,15 @@ const renderFileList = () => {
         else if (file.status === 'done') statusIcon = '<div class="status-overlay done"><i class="fas fa-check"></i></div>';
         else if (file.status === 'error') statusIcon = '<div class="status-overlay error"><i class="fas fa-exclamation"></i></div>';
 
+        const controlDisabledAttr = batchProgress.running ? 'disabled' : '';
         const settingsButtonHtml = file.type === 'pdf' ? `
-            <button class="settings-file-btn" title="PDF Settings" onclick="event.stopPropagation(); openSettings('${file.id}')">
+            <button class="settings-file-btn" title="PDF Settings" ${controlDisabledAttr} onclick="event.stopPropagation(); openSettings('${file.id}')">
                 <i class="fas fa-cog"></i>
             </button>
         ` : '';
 
         item.innerHTML = `
-            <button class="remove-file-btn" title="Remove File" onclick="event.stopPropagation(); removeFile('${file.id}')">
+            <button class="remove-file-btn" title="Remove File" ${controlDisabledAttr} onclick="event.stopPropagation(); removeFile('${file.id}')">
                 <i class="fas fa-trash"></i>
             </button>
             ${settingsButtonHtml}
@@ -763,8 +810,8 @@ const renderResult = () => {
     const file = filesData.find(f => f.id === activeFileId);
     if (!file) {
         outputText.value = '';
-        processBtn.disabled = true;
         outputText.disabled = true;
+        updateGlobalButtons();
         return;
     }
 
@@ -776,70 +823,203 @@ const renderResult = () => {
     }
 
     outputText.disabled = false;
-
-    // Process Button State
-    // Use global processBtn
-    if (processBtn) {
-        if (file.status === 'processing') {
-            processBtn.disabled = true;
-            processBtn.classList.add('disabled');
-            processBtn.textContent = 'Processing...';
-        } else if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) {
-            // Disable if they are actively setting up columns but haven't locked it in yet
-            processBtn.disabled = true;
-            processBtn.classList.add('disabled');
-            processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
-        } else {
-            processBtn.disabled = false;
-            processBtn.classList.remove('disabled');
-            processBtn.removeAttribute('disabled');
-            processBtn.innerHTML = (file.status === 'done' || file.status === 'error') ? '<i class="fas fa-trash-alt"></i> Clear Files' : '<i class="fas fa-play"></i> Start OCR Processing';
-        }
-    }
+    updateGlobalButtons();
 };
 
 const updateGlobalButtons = () => {
     const hasFiles = filesData.length > 0;
     const hasDoneFiles = filesData.some(f => f.status === 'done');
-    const isProcessing = filesData.some(f => f.status === 'processing');
+    const isProcessing = batchProgress.running || filesData.some(f => f.status === 'processing');
     const isConfiguringColumns = globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active;
 
     if (processBtn) {
         processBtn.disabled = !hasFiles || isProcessing || isConfiguringColumns;
-        if (isConfiguringColumns) {
-            processBtn.classList.add('disabled');
+        processBtn.classList.toggle('disabled', processBtn.disabled);
+        if (isProcessing) {
+            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing All...';
+        } else if (isConfiguringColumns) {
+            processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
         } else {
-            processBtn.classList.remove('disabled');
+            processBtn.innerHTML = '<i class="fas fa-play"></i> Start OCR Processing (All)';
         }
     }
 
     if (clearAllBtn) clearAllBtn.disabled = !hasFiles || isProcessing;
     if (downloadAllBtn) downloadAllBtn.disabled = !hasDoneFiles || isProcessing;
+    if (addFilesBtn) addFilesBtn.disabled = isProcessing;
+    if (fileInput) fileInput.disabled = isProcessing;
+    if (selectColumnsBtn) selectColumnsBtn.disabled = !hasFiles || isProcessing;
+    if (languageSelect) languageSelect.disabled = isProcessing;
 };
 
 // --- Actions ---
-const processActiveFile = async () => {
-    const file = filesData.find(f => f.id === activeFileId);
-    if (!file) return;
+const handleProcessClick = () => {
+    if (batchProgress.running || filesData.length === 0) return;
+    if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
+    openReviewModal();
+};
 
-    if (file.status === 'done' || file.status === 'error') {
-        const confirmClear = confirm("Are you sure you want to clear this file?");
-        if (!confirmClear) return;
+const openReviewModal = () => {
+    const selectedLanguage = languageSelect.options[languageSelect.selectedIndex]?.text || languageSelect.value;
+    const columnCount = (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) ? globalColumnsConfigs.numColumns : 1;
+    const itemLabel = filesData.length === 1 ? 'item' : 'items';
 
-        removeFile(file.id);
+    reviewLanguage.textContent = selectedLanguage;
+    reviewColumns.textContent = String(columnCount);
+    reviewSelectionCount.textContent = `${filesData.length} ${itemLabel}`;
+    reviewModal.classList.remove('hidden');
+};
+
+const closeReviewModal = () => {
+    reviewModal.classList.add('hidden');
+};
+
+const startProgressTimer = () => {
+    stopProgressTimer();
+    progressTimerId = setInterval(() => {
+        updateOverallProgressUI();
+    }, 1000);
+};
+
+const stopProgressTimer = () => {
+    if (progressTimerId) {
+        clearInterval(progressTimerId);
+        progressTimerId = null;
+    }
+};
+
+const resetBatchProgressUI = () => {
+    stopProgressTimer();
+    batchProgress = {
+        running: false,
+        totalFiles: 0,
+        completedFiles: 0,
+        startedAt: 0,
+        currentFileName: '',
+        lastRunDurationMs: 0
+    };
+    updateOverallProgressUI();
+};
+
+const formatDuration = (durationMs) => {
+    const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+};
+
+const updateOverallProgressUI = () => {
+    if (!overallProgress) return;
+
+    if (batchProgress.totalFiles === 0) {
+        overallProgress.classList.add('hidden');
+        overallProgressFill.style.width = '0%';
+        overallProgressText.textContent = 'Overall: 0 / 0';
+        overallEtaText.textContent = 'ETA --';
+        overallProgressCurrent.textContent = 'Waiting to start...';
         return;
     }
 
-    file.status = 'processing';
-    renderFileList();
-    renderPreview(); // Update preview to clear splitters if restarting
-    renderResult(); // Updates UI to show processing state
+    overallProgress.classList.remove('hidden');
+    const percent = Math.round((batchProgress.completedFiles / batchProgress.totalFiles) * 100);
+    overallProgressFill.style.width = `${percent}%`;
+    overallProgressText.textContent = `Overall: ${batchProgress.completedFiles} / ${batchProgress.totalFiles} (${percent}%)`;
 
-    if (file.type === 'pdf') {
-        await processPdfDocument(file);
+    if (batchProgress.running) {
+        if (batchProgress.completedFiles > 0) {
+            const elapsedMs = Date.now() - batchProgress.startedAt;
+            const avgMsPerFile = elapsedMs / batchProgress.completedFiles;
+            const remainingFiles = batchProgress.totalFiles - batchProgress.completedFiles;
+            overallEtaText.textContent = `ETA ${formatDuration(avgMsPerFile * remainingFiles)}`;
+        } else {
+            overallEtaText.textContent = 'ETA calculating...';
+        }
+        overallProgressCurrent.textContent = batchProgress.currentFileName ? `Current: ${batchProgress.currentFileName}` : 'Starting...';
     } else {
-        await processSingleImage(file);
+        overallEtaText.textContent = `Done in ${formatDuration(batchProgress.lastRunDurationMs)}`;
+        overallProgressCurrent.textContent = 'All selected items are processed.';
     }
+};
+
+const prepareFileForProcessing = (file) => {
+    if (file.type === 'pdf') {
+        file.pages.forEach(page => {
+            if (page.imgUrl) URL.revokeObjectURL(page.imgUrl);
+        });
+        file.pages = [];
+        file.currentPage = 0;
+    } else {
+        file.text = '';
+    }
+    file.status = 'processing';
+};
+
+const startBatchProcessing = async () => {
+    if (batchProgress.running) return;
+
+    const filesToProcess = [...filesData];
+    if (filesToProcess.length === 0) {
+        closeReviewModal();
+        return;
+    }
+
+    closeReviewModal();
+    batchProgress = {
+        running: true,
+        totalFiles: filesToProcess.length,
+        completedFiles: 0,
+        startedAt: Date.now(),
+        currentFileName: '',
+        lastRunDurationMs: 0
+    };
+    updateOverallProgressUI();
+    updateGlobalButtons();
+    startProgressTimer();
+
+    if (!activeFileId) {
+        activeFileId = filesToProcess[0].id;
+    }
+
+    for (const file of filesToProcess) {
+        batchProgress.currentFileName = file.name;
+        prepareFileForProcessing(file);
+        activeFileId = file.id;
+        renderFileList();
+        renderPreview();
+        renderResult();
+        updateOverallProgressUI();
+
+        try {
+            if (file.type === 'pdf') {
+                await processPdfDocument(file);
+            } else {
+                await processSingleImage(file);
+            }
+        } catch (err) {
+            console.error('File processing error:', err);
+            file.status = 'error';
+            if (file.type !== 'pdf') {
+                file.text = 'Error: Connection failed';
+            }
+            renderFileList();
+            renderResult();
+            updateGlobalButtons();
+        }
+
+        batchProgress.completedFiles += 1;
+        updateOverallProgressUI();
+    }
+
+    batchProgress.running = false;
+    batchProgress.currentFileName = '';
+    batchProgress.lastRunDurationMs = Date.now() - batchProgress.startedAt;
+    stopProgressTimer();
+    updateOverallProgressUI();
+    updateGlobalButtons();
 };
 
 const processSingleImage = async (file) => {
@@ -901,6 +1081,9 @@ const processPdfDocument = async (file) => {
     try {
         const arrayBuffer = await file.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        file.pages.forEach(page => {
+            if (page.imgUrl) URL.revokeObjectURL(page.imgUrl);
+        });
         file.pages = []; // Reset pages
 
         let start = file.startPage && file.startPage > 0 ? file.startPage : 1;
@@ -911,7 +1094,14 @@ const processPdfDocument = async (file) => {
             end = pdf.numPages;
         }
 
+        const totalPagesToProcess = end - start + 1;
+
         for (let i = start; i <= end; i++) {
+            if (batchProgress.running) {
+                batchProgress.currentFileName = `${file.name} (page ${i - start + 1}/${totalPagesToProcess})`;
+                updateOverallProgressUI();
+            }
+
             const pageIndex = file.pages.length;
             file.currentPage = pageIndex; // Update current page index (0-based) to show progress
 
@@ -982,6 +1172,9 @@ const processPdfDocument = async (file) => {
             renderResult(); // Update text area with result
         }
 
+        if (batchProgress.running) {
+            batchProgress.currentFileName = file.name;
+        }
         file.status = 'done';
     } catch (err) {
         console.error("PDF Processing Error:", err);
