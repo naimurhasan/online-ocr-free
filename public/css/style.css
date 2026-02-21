@@ -584,3 +584,74 @@ button {
     transform: scale(1.1);
     background-color: #2563eb;
 }
+
+/* Columns Modal */
+.columns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.column-option {
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.column-option:hover {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.column-option small {
+    font-size: 0.7rem;
+    font-weight: normal;
+    color: var(--accent-color);
+}
+
+/* Column Splitters */
+.column-splitter {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: var(--primary-color);
+    cursor: col-resize;
+    z-index: 50;
+    transform: translateX(-50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s;
+}
+
+.column-splitter:hover,
+.column-splitter.dragging {
+    background-color: #3b82f6;
+    width: 8px;
+}
+
+.column-splitter::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 30px;
+    background: white;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}

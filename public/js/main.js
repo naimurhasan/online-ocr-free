@@ -12,6 +12,11 @@ let panStartY = 0;
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');
+const selectColumnsBtn = document.getElementById('selectColumnsBtn');
+const confirmSplitBtn = document.getElementById('confirmSplitBtn');
+const columnsModal = document.getElementById('columnsModal');
+const cancelColumnsBtn = document.getElementById('cancelColumnsBtn');
+const columnOptions = document.querySelectorAll('.column-option');
 const settingsModal = document.getElementById('settingsModal');
 const settingsFileName = document.getElementById('settingsFileName');
 const startPageInput = document.getElementById('startPage');
@@ -33,6 +38,13 @@ const languageSelect = document.getElementById('language');
 const fileCountSpan = document.getElementById('fileCount');
 
 // --- Initialization ---
+// Global Columns Configuration
+let globalColumnsConfigs = {
+    active: false,
+    numColumns: 1,
+    splitPositions: [] // percentages [0..1]
+};
+
 const init = () => {
     initTheme();
     setupEventListeners();
@@ -90,6 +102,39 @@ const setupEventListeners = () => {
     // Settings Modal
     cancelSettingsBtn.addEventListener('click', closeSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
+
+    // Columns Logic
+    selectColumnsBtn.addEventListener('click', () => {
+        if (!activeFileId) return;
+        columnsModal.classList.remove('hidden');
+    });
+
+    cancelColumnsBtn.addEventListener('click', () => {
+        columnsModal.classList.add('hidden');
+    });
+
+    columnOptions.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cols = parseInt(btn.dataset.cols, 10);
+            setupColumns(cols);
+            columnsModal.classList.add('hidden');
+        });
+    });
+
+    confirmSplitBtn.addEventListener('click', () => {
+        // Lock in the global config
+        globalColumnsConfigs.active = globalColumnsConfigs.numColumns > 1;
+
+        // Hide split confirm button, show columns set active
+        confirmSplitBtn.classList.add('hidden');
+        selectColumnsBtn.classList.remove('btn-secondary');
+        selectColumnsBtn.classList.add('btn-primary');
+        selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> ${globalColumnsConfigs.numColumns} Cols`;
+
+        // Remove draggable class from splitters to lock them
+        const splitters = document.querySelectorAll('.column-splitter');
+        splitters.forEach(s => s.style.pointerEvents = 'none');
+    });
 
     // Zoom/Pan on preview container
     previewContainer.addEventListener('wheel', handleZoomWheel, { passive: false });
@@ -480,11 +525,32 @@ const renderPreview = () => {
     const viewport = document.createElement('div');
     viewport.className = 'preview-viewport';
     viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+    viewport.id = 'previewViewport';
 
     const img = document.createElement('img');
     img.src = src;
     img.className = 'preview-image';
     viewport.appendChild(img);
+
+    // Render splitters if active
+    if (globalColumnsConfigs.numColumns > 1) {
+        globalColumnsConfigs.splitPositions.forEach((pos, index) => {
+            const splitter = document.createElement('div');
+            splitter.className = 'column-splitter';
+            splitter.style.left = `${pos * 100}%`;
+            splitter.dataset.index = index;
+
+            // If confirm hasn't been clicked, they are draggable
+            if (!globalColumnsConfigs.active) {
+                setupSplitterDrag(splitter, viewport);
+            } else {
+                splitter.style.pointerEvents = 'none';
+            }
+
+            viewport.appendChild(splitter);
+        });
+    }
+
     previewContainer.appendChild(viewport);
 
     // Add zoom controls
@@ -496,6 +562,82 @@ const renderPreview = () => {
         <button onclick="zoomReset()" title="Reset"><i class="fas fa-expand"></i></button>
     `;
     previewContainer.appendChild(zoomCtrl);
+};
+
+// --- Columns & Splitting Logic ---
+const setupColumns = (cols) => {
+    globalColumnsConfigs.numColumns = cols;
+    if (cols === 1) {
+        globalColumnsConfigs.active = false;
+        globalColumnsConfigs.splitPositions = [];
+        confirmSplitBtn.classList.add('hidden');
+        selectColumnsBtn.classList.remove('btn-primary');
+        selectColumnsBtn.classList.add('btn-secondary');
+        selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> Columns`;
+    } else {
+        globalColumnsConfigs.active = false; // Not confirmed yet
+        globalColumnsConfigs.splitPositions = [];
+        // Distribute evenly
+        for (let i = 1; i < cols; i++) {
+            globalColumnsConfigs.splitPositions.push(i / cols);
+        }
+        confirmSplitBtn.classList.remove('hidden');
+    }
+
+    // Switch preview to image view if it was PDF to allow overlaying splitters easily
+    const file = filesData.find(f => f.id === activeFileId);
+    if (file && file.type === 'pdf' && file.pages.length === 0 && cols > 1) {
+        // Temporarily clear pdfViewerUrl to force it to render the thumbnail image preview
+        // Note: This is an approximation for setup. Alternatively, we just advise processing first.
+        const originalViewerUrl = file.pdfViewerUrl;
+        file.pdfViewerUrl = null;
+        renderPreview();
+        file.pdfViewerUrl = originalViewerUrl; // Restore it for later
+    } else {
+        renderPreview();
+    }
+};
+
+const setupSplitterDrag = (splitter, container) => {
+    let isDragging = false;
+
+    splitter.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        splitter.classList.add('dragging');
+        // Prevent pan handling
+        e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+
+        const rect = container.getBoundingClientRect();
+        // Calculate raw x position relative to scaled container
+        let x = (e.clientX - rect.left) / zoomLevel;
+        // Convert to percentage
+        let percentage = x / (rect.width / zoomLevel);
+
+        // Boundaries
+        percentage = Math.max(0.01, Math.min(0.99, percentage));
+
+        const index = parseInt(splitter.dataset.index, 10);
+
+        // Prevent crossing neighbors
+        const minPos = index > 0 ? globalColumnsConfigs.splitPositions[index - 1] + 0.02 : 0.01;
+        const maxPos = index < globalColumnsConfigs.splitPositions.length - 1 ? globalColumnsConfigs.splitPositions[index + 1] - 0.02 : 0.99;
+
+        percentage = Math.max(minPos, Math.min(maxPos, percentage));
+
+        globalColumnsConfigs.splitPositions[index] = percentage;
+        splitter.style.left = `${percentage * 100}%`;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            splitter.classList.remove('dragging');
+        }
+    });
 };
 
 const navigatePage = (direction) => {
@@ -568,20 +710,49 @@ const processActiveFile = async () => {
 };
 
 const processSingleImage = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file.file);
-    formData.append('lang', languageSelect.value);
-
     try {
-        const response = await fetch('/api/ocr', { method: 'POST', body: formData });
-        const data = await response.json();
+        if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
+            // Process columns sequentially
+            const textParts = [];
+            const splits = [0, ...globalColumnsConfigs.splitPositions, 1];
 
-        if (response.ok) {
-            file.text = data.text;
+            for (let i = 0; i < splits.length - 1; i++) {
+                const startPct = splits[i];
+                const endPct = splits[i + 1];
+                const croppedBlob = await cropImageBlob(file.file, startPct, endPct);
+
+                const formData = new FormData();
+                formData.append('file', croppedBlob, `${file.name}_col_${i + 1}.png`);
+                formData.append('lang', languageSelect.value);
+
+                const response = await fetch('/api/ocr', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (response.ok) {
+                    textParts.push(data.text);
+                } else {
+                    textParts.push(`[Error in Column ${i + 1}: ${data.error || 'Unknown error'}]`);
+                }
+            }
+            file.text = textParts.join('\n\n--- Column Break ---\n\n');
             file.status = 'done';
+
         } else {
-            file.text = "Error: " + (data.error || 'Unknown error');
-            file.status = 'error';
+            // Standard whole-image processing
+            const formData = new FormData();
+            formData.append('file', file.file);
+            formData.append('lang', languageSelect.value);
+
+            const response = await fetch('/api/ocr', { method: 'POST', body: formData });
+            const data = await response.json();
+
+            if (response.ok) {
+                file.text = data.text;
+                file.status = 'done';
+            } else {
+                file.text = "Error: " + (data.error || 'Unknown error');
+                file.status = 'error';
+            }
         }
     } catch (err) {
         console.error(err);
@@ -633,18 +804,43 @@ const processPdfDocument = async (file) => {
             renderPreview(); // Show new page image
             renderResult();  // Show "Processing..." in text area
 
-            // 3. Send to OCR
-            const formData = new FormData();
-            formData.append('file', blob, `page_${i}.png`);
-            formData.append('lang', languageSelect.value);
-
+            // 3. Send to OCR (handling columns if active)
             try {
-                const response = await fetch('/api/ocr', { method: 'POST', body: formData });
-                const data = await response.json();
-                if (response.ok) {
-                    file.pages[pageIndex].text = data.text;
+                if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
+                    const textParts = [];
+                    const splits = [0, ...globalColumnsConfigs.splitPositions, 1];
+
+                    for (let c = 0; c < splits.length - 1; c++) {
+                        const startPct = splits[c];
+                        const endPct = splits[c + 1];
+                        const croppedBlob = await cropImageBlob(blob, startPct, endPct);
+
+                        const formData = new FormData();
+                        formData.append('file', croppedBlob, `page_${i}_col_${c + 1}.png`);
+                        formData.append('lang', languageSelect.value);
+
+                        const response = await fetch('/api/ocr', { method: 'POST', body: formData });
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            textParts.push(data.text);
+                        } else {
+                            textParts.push(`[Error in Column ${c + 1}: ${data.error || 'Unknown error'}]`);
+                        }
+                    }
+                    file.pages[pageIndex].text = textParts.join('\n\n--- Column Break ---\n\n');
                 } else {
-                    file.pages[pageIndex].text = "Error: " + (data.error || 'Unknown error');
+                    const formData = new FormData();
+                    formData.append('file', blob, `page_${i}.png`);
+                    formData.append('lang', languageSelect.value);
+
+                    const response = await fetch('/api/ocr', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (response.ok) {
+                        file.pages[pageIndex].text = data.text;
+                    } else {
+                        file.pages[pageIndex].text = "Error: " + (data.error || 'Unknown error');
+                    }
                 }
             } catch (err) {
                 file.pages[pageIndex].text = "Error: Connection failed";
@@ -746,6 +942,30 @@ const downloadAllZip = async () => {
     } finally {
         downloadAllBtn.innerHTML = '<i class="fas fa-download"></i> Download All (Zip)';
     }
+};
+
+// --- Utilities ---
+const cropImageBlob = (blob, startPct, endPct) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const cropX = img.width * startPct;
+            const cropW = img.width * (endPct - startPct);
+
+            canvas.width = cropW;
+            canvas.height = img.height;
+
+            ctx.drawImage(img, cropX, 0, cropW, img.height, 0, 0, cropW, img.height);
+            canvas.toBlob((croppedBlob) => {
+                resolve(croppedBlob);
+            }, blob.type || 'image/png');
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(blob);
+    });
 };
 
 // Start

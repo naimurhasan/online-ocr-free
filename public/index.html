@@ -71,7 +71,13 @@
             <section class="col-preview">
                 <div class="col-header">
                     <h3>Preview</h3>
-                    <span id="previewName" class="file-meta">No file selected</span>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="previewName" class="file-meta">No file selected</span>
+                        <button id="selectColumnsBtn" class="btn-secondary btn-sm"><i class="fas fa-columns"></i>
+                            Columns</button>
+                        <button id="confirmSplitBtn" class="btn-primary btn-sm hidden"><i class="fas fa-check"></i>
+                            Confirm Split</button>
+                    </div>
                 </div>
                 <div class="preview-container" id="previewContainer">
                     <!-- Image or PDF Canvas goes here -->
@@ -127,6 +133,26 @@
             <div class="modal-actions">
                 <button id="cancelSettingsBtn" class="btn-secondary">Cancel</button>
                 <button id="saveSettingsBtn" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columns Modal -->
+    <div id="columnsModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Select Columns</h3>
+            <p class="settings-file-name">Choose the number of text columns in your documents to guide OCR.</p>
+            <div class="columns-grid">
+                <button class="column-option" data-cols="1">1<br /><small>(Reset)</small></button>
+                <button class="column-option" data-cols="2">2</button>
+                <button class="column-option" data-cols="3">3</button>
+                <button class="column-option" data-cols="4">4</button>
+                <button class="column-option" data-cols="5">5</button>
+                <button class="column-option" data-cols="6">6</button>
+                <button class="column-option" data-cols="7">7</button>
+            </div>
+            <div class="modal-actions" style="margin-top: 1.5rem;">
+                <button id="cancelColumnsBtn" class="btn-secondary">Cancel</button>
             </div>
         </div>
     </div>
