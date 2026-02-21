@@ -34,7 +34,6 @@ const previewName = document.getElementById('previewName');
 const outputText = document.getElementById('outputText');
 const processBtn = document.getElementById('processBtn');
 const copyBtn = document.getElementById('copyBtn');
-const downloadTextBtn = document.getElementById('downloadTextBtn');
 const themeToggleBtn = document.getElementById('themeToggle');
 const languageSelect = document.getElementById('language');
 const fileCountSpan = document.getElementById('fileCount');
@@ -92,7 +91,6 @@ const setupEventListeners = () => {
     // Result Actions
     processBtn.addEventListener('click', processActiveFile);
     copyBtn.addEventListener('click', copyToClipboard);
-    downloadTextBtn.addEventListener('click', downloadActiveText);
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -149,6 +147,7 @@ const setupEventListeners = () => {
 
         // Hide split confirm button, show columns set active
         confirmSplitBtn.classList.add('hidden');
+        confirmSplitBtn.classList.remove('btn-pulse');
         selectColumnsBtn.classList.remove('btn-secondary');
         selectColumnsBtn.classList.add('btn-primary');
         selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> ${globalColumnsConfigs.numColumns} Cols`;
@@ -156,6 +155,9 @@ const setupEventListeners = () => {
         // Remove draggable class from splitters to lock them
         const splitters = document.querySelectorAll('.column-splitter');
         splitters.forEach(s => s.style.pointerEvents = 'none');
+
+        updateGlobalButtons(); // Un-disable Process Button state
+        renderPreview(); // Enforce the transition back to scrollable view
     });
 
     // Zoom/Pan on preview container
@@ -279,7 +281,7 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
         const safePageNum = Math.min(Math.max(1, pageNum), pdf.numPages);
         const page = await pdf.getPage(safePageNum);
 
-        const viewport = page.getViewport({ scale: 0.5 }); // Smaller scale for thumbnail
+        const viewport = page.getViewport({ scale: 1.5 }); // High-definition scale for split preview
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
@@ -531,7 +533,10 @@ const renderPreview = () => {
             }
         } else {
             paginationControls.classList.add('hidden');
-            if (file.type === 'pdf' && globalColumnsConfigs.numColumns === 1) {
+            // Show custom viewer if no columns, OR if columns are confirmed and locked in
+            const showCustomViewer = file.type === 'pdf' && (globalColumnsConfigs.numColumns === 1 || globalColumnsConfigs.active);
+
+            if (showCustomViewer) {
                 // Render our custom scrolling PDF.js viewer instead of a native <object> tag
                 previewContainer.innerHTML = '<div class="pdf-custom-viewer" id="customPdfViewer"></div>';
                 const customViewer = document.getElementById('customPdfViewer');
@@ -631,10 +636,15 @@ const renderPreview = () => {
     viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
     viewport.id = 'previewViewport';
 
+    const imgWrapper = document.createElement('div');
+    imgWrapper.className = 'preview-image-wrapper';
+
     const img = document.createElement('img');
     img.src = src;
     img.className = 'preview-image';
-    viewport.appendChild(img);
+
+    imgWrapper.appendChild(img);
+    viewport.appendChild(imgWrapper);
 
     // Render splitters if active
     if (globalColumnsConfigs.numColumns > 1) {
@@ -646,12 +656,12 @@ const renderPreview = () => {
 
             // If confirm hasn't been clicked, they are draggable
             if (!globalColumnsConfigs.active) {
-                setupSplitterDrag(splitter, viewport);
+                setupSplitterDrag(splitter, imgWrapper);
             } else {
                 splitter.style.pointerEvents = 'none';
             }
 
-            viewport.appendChild(splitter);
+            imgWrapper.appendChild(splitter);
         });
     }
 
@@ -686,10 +696,12 @@ const setupColumns = (cols) => {
             globalColumnsConfigs.splitPositions.push(i / cols);
         }
         confirmSplitBtn.classList.remove('hidden');
+        confirmSplitBtn.classList.add('btn-pulse');
     }
 
     // Render preview to show/hide splitters
     renderPreview();
+    updateGlobalButtons(); // Re-eval Process Button state
 };
 
 const setupSplitterDrag = (splitter, container) => {
@@ -772,11 +784,16 @@ const renderResult = () => {
             processBtn.disabled = true;
             processBtn.classList.add('disabled');
             processBtn.textContent = 'Processing...';
+        } else if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) {
+            // Disable if they are actively setting up columns but haven't locked it in yet
+            processBtn.disabled = true;
+            processBtn.classList.add('disabled');
+            processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
         } else {
             processBtn.disabled = false;
             processBtn.classList.remove('disabled');
             processBtn.removeAttribute('disabled');
-            processBtn.textContent = file.status === 'done' ? 'Reprocess OCR' : 'Start OCR Processing';
+            processBtn.innerHTML = (file.status === 'done' || file.status === 'error') ? '<i class="fas fa-trash-alt"></i> Clear Files' : '<i class="fas fa-play"></i> Start OCR Processing';
         }
     }
 };
@@ -784,7 +801,20 @@ const renderResult = () => {
 const updateGlobalButtons = () => {
     const hasFiles = filesData.length > 0;
     const hasDoneFiles = filesData.some(f => f.status === 'done');
-    downloadAllBtn.disabled = !hasDoneFiles;
+    const isProcessing = filesData.some(f => f.status === 'processing');
+    const isConfiguringColumns = globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active;
+
+    if (processBtn) {
+        processBtn.disabled = !hasFiles || isProcessing || isConfiguringColumns;
+        if (isConfiguringColumns) {
+            processBtn.classList.add('disabled');
+        } else {
+            processBtn.classList.remove('disabled');
+        }
+    }
+
+    if (clearAllBtn) clearAllBtn.disabled = !hasFiles || isProcessing;
+    if (downloadAllBtn) downloadAllBtn.disabled = !hasDoneFiles || isProcessing;
 };
 
 // --- Actions ---
@@ -792,8 +822,17 @@ const processActiveFile = async () => {
     const file = filesData.find(f => f.id === activeFileId);
     if (!file) return;
 
+    if (file.status === 'done' || file.status === 'error') {
+        const confirmClear = confirm("Are you sure you want to clear this file?");
+        if (!confirmClear) return;
+
+        removeFile(file.id);
+        return;
+    }
+
     file.status = 'processing';
     renderFileList();
+    renderPreview(); // Update preview to clear splitters if restarting
     renderResult(); // Updates UI to show processing state
 
     if (file.type === 'pdf') {
@@ -952,39 +991,20 @@ const processPdfDocument = async (file) => {
 
     renderFileList();
     renderPreview(); // Ensure controls are updated
+    renderResult();  // Update the processing button state specifically
     updateGlobalButtons();
 };
 
 const copyToClipboard = () => {
-    navigator.clipboard.writeText(outputText.value);
-    // Could add brief visual feedback
-};
-
-const downloadActiveText = () => {
-    const file = filesData.find(f => f.id === activeFileId);
-    if (!file) return;
-
-    let text = '';
-    let name = file.name;
-
-    if (file.type === 'pdf') {
-        const page = file.pages[file.currentPage];
-        if (!page) return;
-        text = page.text;
-        name = `${file.name}_page_${file.currentPage + 1}`;
-    } else {
-        text = file.text;
-    }
-
-    if (!text) return;
-
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name + '.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+    navigator.clipboard.writeText(outputText.value).then(() => {
+        const toast = document.getElementById('toast');
+        if (toast) {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500); // Hide after 2.5s
+        }
+    });
 };
 
 const downloadAllZip = async () => {
