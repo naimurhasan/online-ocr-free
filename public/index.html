@@ -32,6 +32,15 @@
                         <option value="eng">English</option>
                     </select>
                 </div>
+                <div class="language-select">
+                    <select id="ocrEngine">
+                        <option value="tesseract" selected>Use Tesseract OCR</option>
+                        <option value="google-vision">Use Google Vision API</option>
+                    </select>
+                </div>
+                <div id="googleVisionKeyWrap" class="engine-key-wrap hidden">
+                    <input type="password" id="googleVisionApiKey" placeholder="Google Vision API Key">
+                </div>
 
                 <button id="addFilesBtn" class="btn-secondary">
                     <i class="fas fa-plus"></i> Add Files
@@ -183,6 +192,10 @@
                 <div class="review-row">
                     <span>Selected items</span>
                     <strong id="reviewSelectionCount">-</strong>
+                </div>
+                <div class="review-row">
+                    <span>OCR Engine</span>
+                    <strong id="reviewEngine">-</strong>
                 </div>
             </div>
             <div class="modal-actions" style="margin-top: 1.5rem;">

@@ -10,10 +10,15 @@ exports.processFile = async (req, res) => {
 
         const { path: filePath, mimetype } = req.file;
         const lang = req.body.lang || 'eng+ben';
+        const engine = req.body.engine || 'tesseract';
+        const googleApiKey = (req.body.googleApiKey || '').trim();
 
-        console.log(`Processing file: ${filePath} with lang: ${lang}`);
+        console.log(`Processing file: ${filePath} with lang: ${lang} and engine: ${engine}`);
 
-        const textResult = await extractText(filePath, mimetype, lang);
+        const textResult = await extractText(filePath, mimetype, lang, true, {
+            engine,
+            googleApiKey
+        });
 
         deleteFile(filePath);
         res.json({ text: textResult });
@@ -21,7 +26,7 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        res.status(500).json({ error: 'Failed to process file' });
+        res.status(500).json({ error: error.message || 'Failed to process file' });
     }
 };
 
@@ -31,13 +36,18 @@ exports.processBatch = async (req, res) => {
     }
 
     const { email, lang } = req.body;
+    const engine = req.body.engine || 'tesseract';
+    const googleApiKey = (req.body.googleApiKey || '').trim();
     const files = req.files;
 
     // Immediate response
     res.json({ message: 'Batch processing started. Results will be emailed.', fileCount: files.length });
 
     // Background processing
-    processBatchFiles(files, lang || 'eng+ben', email);
+    processBatchFiles(files, lang || 'eng+ben', email, {
+        engine,
+        googleApiKey
+    });
 };
 
 const archiver = require('archiver');
@@ -78,13 +88,13 @@ exports.downloadZip = async (req, res) => {
     archive.finalize();
 };
 
-async function processBatchFiles(files, langKey, email) {
+async function processBatchFiles(files, langKey, email, options = {}) {
     let results = [];
     const lang = langKey || 'eng+ben';
 
     for (const file of files) {
         try {
-            const fileText = await extractText(file.path, file.mimetype, lang);
+            const fileText = await extractText(file.path, file.mimetype, lang, true, options);
             results.push({ filename: file.originalname, text: fileText });
         } catch (err) {
             console.error(`Error processing ${file.originalname}:`, err);

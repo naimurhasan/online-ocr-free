@@ -11,6 +11,64 @@ const TESSERACT_OPTS = {
     gzip: false
 };
 
+const GOOGLE_VISION_ENDPOINT = 'https://vision.googleapis.com/v1/images:annotate';
+
+const LANGUAGE_HINTS_MAP = {
+    ben: 'bn',
+    eng: 'en',
+    hin: 'hi',
+    ara: 'ar'
+};
+
+const getGoogleLanguageHints = (lang = 'ben') => {
+    return lang
+        .split('+')
+        .map(code => code.trim().toLowerCase())
+        .map(code => LANGUAGE_HINTS_MAP[code] || null)
+        .filter(Boolean);
+};
+
+const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
+    if (!googleApiKey) {
+        throw new Error('Google Vision API key is required');
+    }
+
+    const imageBuffer = await fs.readFile(imagePath);
+    const languageHints = getGoogleLanguageHints(lang);
+    const requestBody = {
+        requests: [
+            {
+                image: {
+                    content: imageBuffer.toString('base64')
+                },
+                features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+                imageContext: languageHints.length > 0 ? { languageHints } : undefined
+            }
+        ]
+    };
+
+    const response = await fetch(`${GOOGLE_VISION_ENDPOINT}?key=${encodeURIComponent(googleApiKey)}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        const message = payload?.error?.message || `Google Vision request failed (${response.status})`;
+        throw new Error(message);
+    }
+
+    const apiResponse = payload?.responses?.[0];
+    if (apiResponse?.error?.message) {
+        throw new Error(apiResponse.error.message);
+    }
+
+    return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
+};
+
 const ensureTempFolder = async () => {
     const tempDir = path.resolve('./temp');
     try {
@@ -89,7 +147,10 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
 
 
 
-const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true) => {
+const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, options = {}) => {
+    const engine = options.engine || 'tesseract';
+    const googleApiKey = options.googleApiKey || '';
+    const useGoogleVision = engine === 'google-vision';
     let textResult = '';
 
     if (mimetype === 'application/pdf') {
@@ -99,20 +160,27 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true) =
             const image = imageFiles[i];
             console.log(`\n📄 Processing page ${i + 1}/${imageFiles.length}...`);
 
-            const processedImage = saveSteps
-                ? await preprocessImageWithSteps(image, `page${i + 1}`)
-                : await preprocessImageWithSteps(image, `page${i + 1}`);
+            let text = '';
+            if (useGoogleVision) {
+                console.log('🔍 Running OCR with Google Vision API...');
+                text = await extractTextWithGoogleVision(image, lang, googleApiKey);
+            } else {
+                const processedImage = saveSteps
+                    ? await preprocessImageWithSteps(image, `page${i + 1}`)
+                    : await preprocessImageWithSteps(image, `page${i + 1}`);
 
-            console.log('🔍 Running OCR...');
-            const { data: { text } } = await Tesseract.recognize(
-                processedImage,
-                lang,
-                {
-                    ...TESSERACT_OPTS,
-                    tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                    preserve_interword_spaces: '1'
-                }
-            );
+                console.log('🔍 Running OCR with Tesseract...');
+                const result = await Tesseract.recognize(
+                    processedImage,
+                    lang,
+                    {
+                        ...TESSERACT_OPTS,
+                        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+                        preserve_interword_spaces: '1'
+                    }
+                );
+                text = result.data.text;
+            }
 
             textResult += text + '\n\n';
             console.log('✅ OCR completed for page', i + 1);
@@ -122,22 +190,27 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true) =
     } else {
         console.log('\n📄 Processing single image...');
 
-        const processedImage = saveSteps
-            ? await preprocessImageWithSteps(filePath, 'single')
-            : await preprocessImageWithSteps(filePath, 'single');
+        if (useGoogleVision) {
+            console.log('🔍 Running OCR with Google Vision API...');
+            textResult = await extractTextWithGoogleVision(filePath, lang, googleApiKey);
+        } else {
+            const processedImage = saveSteps
+                ? await preprocessImageWithSteps(filePath, 'single')
+                : await preprocessImageWithSteps(filePath, 'single');
 
-        console.log('🔍 Running OCR...');
-        const { data: { text } } = await Tesseract.recognize(
-            processedImage,
-            lang,
-            {
-                ...TESSERACT_OPTS,
-                tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-                preserve_interword_spaces: '1'
-            }
-        );
+            console.log('🔍 Running OCR with Tesseract...');
+            const result = await Tesseract.recognize(
+                processedImage,
+                lang,
+                {
+                    ...TESSERACT_OPTS,
+                    tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+                    preserve_interword_spaces: '1'
+                }
+            );
 
-        textResult = text;
+            textResult = result.data.text;
+        }
         console.log('✅ OCR completed');
     }
 

@@ -36,6 +36,9 @@ const processBtn = document.getElementById('processBtn');
 const copyBtn = document.getElementById('copyBtn');
 const themeToggleBtn = document.getElementById('themeToggle');
 const languageSelect = document.getElementById('language');
+const ocrEngineSelect = document.getElementById('ocrEngine');
+const googleVisionKeyWrap = document.getElementById('googleVisionKeyWrap');
+const googleVisionApiKeyInput = document.getElementById('googleVisionApiKey');
 const fileCountSpan = document.getElementById('fileCount');
 const reviewModal = document.getElementById('reviewModal');
 const cancelReviewBtn = document.getElementById('cancelReviewBtn');
@@ -43,6 +46,7 @@ const confirmReviewBtn = document.getElementById('confirmReviewBtn');
 const reviewLanguage = document.getElementById('reviewLanguage');
 const reviewColumns = document.getElementById('reviewColumns');
 const reviewSelectionCount = document.getElementById('reviewSelectionCount');
+const reviewEngine = document.getElementById('reviewEngine');
 const overallProgress = document.getElementById('overallProgress');
 const overallProgressText = document.getElementById('overallProgressText');
 const overallEtaText = document.getElementById('overallEtaText');
@@ -71,6 +75,7 @@ let progressTimerId = null;
 const init = () => {
     initTheme();
     setupEventListeners();
+    updateEngineUI();
     updateOverallProgressUI();
     updateGlobalButtons();
 };
@@ -121,6 +126,11 @@ const setupEventListeners = () => {
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
+    ocrEngineSelect.addEventListener('change', () => {
+        updateEngineUI();
+        updateGlobalButtons();
+    });
+    googleVisionApiKeyInput.addEventListener('input', updateGlobalButtons);
 
     // Pagination
     document.getElementById('prevPageBtn').addEventListener('click', () => navigatePage(-1));
@@ -214,6 +224,23 @@ const toggleTheme = () => {
 const updateThemeIcon = (isDark) => {
     const icon = themeToggleBtn.querySelector('i');
     icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+};
+
+const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'google-vision';
+
+const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim();
+
+const updateEngineUI = () => {
+    if (!googleVisionKeyWrap) return;
+    googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
+};
+
+const appendOcrConfigToFormData = (formData) => {
+    formData.append('lang', languageSelect.value);
+    formData.append('engine', ocrEngineSelect.value);
+    if (isGoogleVisionSelected()) {
+        formData.append('googleApiKey', getGoogleVisionApiKey());
+    }
 };
 
 // --- File Handling ---
@@ -829,16 +856,23 @@ const renderResult = () => {
 const updateGlobalButtons = () => {
     const hasFiles = filesData.length > 0;
     const hasDoneFiles = filesData.some(f => f.status === 'done');
+    const allProcessed = hasFiles && filesData.every(f => f.status === 'done' || f.status === 'error');
     const isProcessing = batchProgress.running || filesData.some(f => f.status === 'processing');
     const isConfiguringColumns = globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active;
+    const googleKeyMissing = isGoogleVisionSelected() && !getGoogleVisionApiKey();
+    const isStartBlockedByConfig = isConfiguringColumns || googleKeyMissing;
 
     if (processBtn) {
-        processBtn.disabled = !hasFiles || isProcessing || isConfiguringColumns;
+        processBtn.disabled = !hasFiles || isProcessing || isStartBlockedByConfig;
         processBtn.classList.toggle('disabled', processBtn.disabled);
         if (isProcessing) {
             processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing All...';
+        } else if (allProcessed) {
+            processBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clear Files';
         } else if (isConfiguringColumns) {
             processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
+        } else if (googleKeyMissing) {
+            processBtn.innerHTML = '<i class="fas fa-key"></i> Add Google API Key';
         } else {
             processBtn.innerHTML = '<i class="fas fa-play"></i> Start OCR Processing (All)';
         }
@@ -850,23 +884,37 @@ const updateGlobalButtons = () => {
     if (fileInput) fileInput.disabled = isProcessing;
     if (selectColumnsBtn) selectColumnsBtn.disabled = !hasFiles || isProcessing;
     if (languageSelect) languageSelect.disabled = isProcessing;
+    if (ocrEngineSelect) ocrEngineSelect.disabled = isProcessing;
+    if (googleVisionApiKeyInput) googleVisionApiKeyInput.disabled = isProcessing || !isGoogleVisionSelected();
 };
 
 // --- Actions ---
 const handleProcessClick = () => {
     if (batchProgress.running || filesData.length === 0) return;
+    const allProcessed = filesData.every(f => f.status === 'done' || f.status === 'error');
+    if (allProcessed) {
+        const confirmClear = confirm('Clear all files from the queue?');
+        if (confirmClear) clearAll();
+        return;
+    }
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
+    if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
+        alert('Please enter your Google Vision API key first.');
+        return;
+    }
     openReviewModal();
 };
 
 const openReviewModal = () => {
     const selectedLanguage = languageSelect.options[languageSelect.selectedIndex]?.text || languageSelect.value;
+    const selectedEngine = ocrEngineSelect.options[ocrEngineSelect.selectedIndex]?.text || ocrEngineSelect.value;
     const columnCount = (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) ? globalColumnsConfigs.numColumns : 1;
     const itemLabel = filesData.length === 1 ? 'item' : 'items';
 
     reviewLanguage.textContent = selectedLanguage;
     reviewColumns.textContent = String(columnCount);
     reviewSelectionCount.textContent = `${filesData.length} ${itemLabel}`;
+    reviewEngine.textContent = selectedEngine;
     reviewModal.classList.remove('hidden');
 };
 
@@ -1036,7 +1084,7 @@ const processSingleImage = async (file) => {
 
                 const formData = new FormData();
                 formData.append('file', croppedBlob, `${file.name}_col_${i + 1}.png`);
-                formData.append('lang', languageSelect.value);
+                appendOcrConfigToFormData(formData);
 
                 const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                 const data = await response.json();
@@ -1054,7 +1102,7 @@ const processSingleImage = async (file) => {
             // Standard whole-image processing
             const formData = new FormData();
             formData.append('file', file.file);
-            formData.append('lang', languageSelect.value);
+            appendOcrConfigToFormData(formData);
 
             const response = await fetch('/api/ocr', { method: 'POST', body: formData });
             const data = await response.json();
@@ -1140,7 +1188,7 @@ const processPdfDocument = async (file) => {
 
                         const formData = new FormData();
                         formData.append('file', croppedBlob, `page_${i}_col_${c + 1}.png`);
-                        formData.append('lang', languageSelect.value);
+                        appendOcrConfigToFormData(formData);
 
                         const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                         const data = await response.json();
@@ -1155,7 +1203,7 @@ const processPdfDocument = async (file) => {
                 } else {
                     const formData = new FormData();
                     formData.append('file', blob, `page_${i}.png`);
-                    formData.append('lang', languageSelect.value);
+                    appendOcrConfigToFormData(formData);
 
                     const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                     const data = await response.json();

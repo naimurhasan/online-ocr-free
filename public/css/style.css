@@ -433,6 +433,19 @@ select {
     cursor: pointer;
 }
 
+.engine-key-wrap input {
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+    min-width: 220px;
+}
+
+.engine-key-wrap input::placeholder {
+    color: var(--accent-color);
+}
+
 button {
     cursor: pointer;
     font-family: inherit;
