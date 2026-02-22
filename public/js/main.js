@@ -20,11 +20,15 @@ const columnOptions = document.querySelectorAll('.column-option');
 const columnPdfPageControl = document.getElementById('columnPdfPageControl');
 const columnPdfPageNum = document.getElementById('columnPdfPageNum');
 const settingsModal = document.getElementById('settingsModal');
+const settingsModalTitle = document.getElementById('settingsModalTitle');
 const settingsFileName = document.getElementById('settingsFileName');
+const pdfPageSettings = document.getElementById('pdfPageSettings');
 const startPageInput = document.getElementById('startPage');
 const endPageInput = document.getElementById('endPage');
 const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const rotationHand = document.getElementById('rotationHand');
+const rotationPoints = document.querySelectorAll('.rotation-point');
 const addFilesBtn = document.getElementById('addFilesBtn');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
@@ -160,6 +164,12 @@ const setupEventListeners = () => {
     // Settings Modal
     cancelSettingsBtn.addEventListener('click', closeSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
+    rotationPoints.forEach((point) => {
+        point.addEventListener('click', () => {
+            const rotation = parseInt(point.dataset.rotation, 10) || 0;
+            setSettingsRotation(rotation);
+        });
+    });
 
     // Columns Logic
     selectColumnsBtn.addEventListener('click', () => {
@@ -254,9 +264,6 @@ const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim(
 const updateEngineUI = () => {
     if (!googleVisionKeyWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
-    if (languageWrap) {
-        languageWrap.classList.toggle('hidden', isGoogleVisionSelected());
-    }
 };
 
 const appendOcrConfigToFormData = (formData) => {
@@ -420,6 +427,7 @@ const addFileToState = (file, name) => {
         currentPage: 0, // 0-indexed
         startPage: null, // For PDFs
         endPage: null, // For PDFs
+        rotation: 0, // 0, 90, 180, 270
         activeViewerPage: 1, // For tracking the actual visible page in the custom PDF DOM viewer
         // Use a generic placeholder or the image URL
         previewUrl: isPdf ? 'https://placehold.co/50x70?text=PDF' : URL.createObjectURL(file),
@@ -533,6 +541,7 @@ const removeFile = (id) => {
 
 // --- Settings Modal ---
 let settingsFileId = null;
+let settingsRotation = 0;
 
 const openSettings = (id) => {
     if (batchProgress.running) return;
@@ -541,8 +550,11 @@ const openSettings = (id) => {
 
     settingsFileId = id;
     settingsFileName.textContent = file.name;
+    settingsModalTitle.textContent = file.type === 'pdf' ? 'PDF Settings' : 'Image Settings';
+    pdfPageSettings.classList.toggle('hidden', file.type !== 'pdf');
     startPageInput.value = file.startPage || '';
     endPageInput.value = file.endPage || '';
+    setSettingsRotation(file.rotation || 0);
 
     settingsModal.classList.remove('hidden');
 };
@@ -550,16 +562,46 @@ const openSettings = (id) => {
 const closeSettings = () => {
     settingsModal.classList.add('hidden');
     settingsFileId = null;
+    settingsRotation = 0;
     startPageInput.value = '';
     endPageInput.value = '';
+};
+
+const setSettingsRotation = (rotation) => {
+    const normalized = [0, 90, 180, 270].includes(rotation) ? rotation : 0;
+    settingsRotation = normalized;
+    if (rotationHand) {
+        rotationHand.style.transform = `translate(-50%, -100%) rotate(${normalized}deg)`;
+    }
+    rotationPoints.forEach((point) => {
+        point.classList.toggle('active', parseInt(point.dataset.rotation, 10) === normalized);
+    });
+};
+
+const applyRotationToFile = (file, rotation) => {
+    const previousRotation = file.rotation || 0;
+    const nextRotation = [0, 90, 180, 270].includes(rotation) ? rotation : 0;
+    if (previousRotation === nextRotation) return;
+
+    file.rotation = nextRotation;
+
+    if (globalColumnsConfigs.numColumns > 1 || globalColumnsConfigs.active) {
+        setupColumns(1);
+        showToast('Columns reset after rotation. Set columns again if needed.');
+    }
 };
 
 const saveSettings = () => {
     if (!settingsFileId) return;
     const file = filesData.find(f => f.id === settingsFileId);
     if (file) {
-        file.startPage = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
-        file.endPage = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
+        if (file.type === 'pdf') {
+            file.startPage = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
+            file.endPage = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
+        }
+        applyRotationToFile(file, settingsRotation);
+        renderPreview();
+        renderResult();
     }
     closeSettings();
 };
@@ -602,11 +644,11 @@ const renderFileList = () => {
         else if (file.status === 'error') statusIcon = '<div class="status-overlay error"><i class="fas fa-exclamation"></i></div>';
 
         const controlDisabledAttr = batchProgress.running ? 'disabled' : '';
-        const settingsButtonHtml = file.type === 'pdf' ? `
-            <button class="settings-file-btn" title="PDF Settings" ${controlDisabledAttr} onclick="event.stopPropagation(); openSettings('${file.id}')">
+        const settingsButtonHtml = `
+            <button class="settings-file-btn" title="File Settings" ${controlDisabledAttr} onclick="event.stopPropagation(); openSettings('${file.id}')">
                 <i class="fas fa-cog"></i>
             </button>
-        ` : '';
+        `;
 
         item.innerHTML = `
             <button class="remove-file-btn" title="Remove File" ${controlDisabledAttr} onclick="event.stopPropagation(); removeFile('${file.id}')">
@@ -715,7 +757,9 @@ const renderPreview = () => {
         } else {
             paginationControls.classList.add('hidden');
             // Show custom viewer if no columns, OR if columns are confirmed and locked in
-            const showCustomViewer = file.type === 'pdf' && (globalColumnsConfigs.numColumns === 1 || globalColumnsConfigs.active);
+            const showCustomViewer = file.type === 'pdf'
+                && file.rotation === 0
+                && (globalColumnsConfigs.numColumns === 1 || globalColumnsConfigs.active);
 
             if (showCustomViewer) {
                 // Render our custom scrolling PDF.js viewer instead of a native <object> tag
@@ -823,6 +867,8 @@ const renderPreview = () => {
     const img = document.createElement('img');
     img.src = src;
     img.className = 'preview-image';
+    img.style.transform = `rotate(${file.rotation || 0}deg)`;
+    img.style.transformOrigin = 'center center';
 
     imgWrapper.appendChild(img);
     viewport.appendChild(imgWrapper);
@@ -1189,6 +1235,9 @@ const startBatchProcessing = async () => {
 
 const processSingleImage = async (file) => {
     try {
+        const sourceBlob = file.file;
+        const workingBlob = await rotateImageBlob(sourceBlob, file.rotation || 0);
+
         if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
             // Process columns sequentially
             const textParts = [];
@@ -1197,7 +1246,7 @@ const processSingleImage = async (file) => {
             for (let i = 0; i < splits.length - 1; i++) {
                 const startPct = splits[i];
                 const endPct = splits[i + 1];
-                const croppedBlob = await cropImageBlob(file.file, startPct, endPct);
+                const croppedBlob = await cropImageBlob(workingBlob, startPct, endPct);
 
                 const formData = new FormData();
                 formData.append('file', croppedBlob, `${file.name}_col_${i + 1}.png`);
@@ -1218,7 +1267,7 @@ const processSingleImage = async (file) => {
         } else {
             // Standard whole-image processing
             const formData = new FormData();
-            formData.append('file', file.file);
+            formData.append('file', workingBlob, file.name);
             appendOcrConfigToFormData(formData);
 
             const response = await fetch('/api/ocr', { method: 'POST', body: formData });
@@ -1280,6 +1329,7 @@ const processPdfDocument = async (file) => {
             await page.render({ canvasContext: context, viewport: viewport }).promise;
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const workingBlob = await rotateImageBlob(blob, file.rotation || 0);
             const imageUrl = URL.createObjectURL(blob);
 
             // 2. Add to pages array (initially without text)
@@ -1301,7 +1351,7 @@ const processPdfDocument = async (file) => {
                     for (let c = 0; c < splits.length - 1; c++) {
                         const startPct = splits[c];
                         const endPct = splits[c + 1];
-                        const croppedBlob = await cropImageBlob(blob, startPct, endPct);
+                        const croppedBlob = await cropImageBlob(workingBlob, startPct, endPct);
 
                         const formData = new FormData();
                         formData.append('file', croppedBlob, `page_${i}_col_${c + 1}.png`);
@@ -1319,7 +1369,7 @@ const processPdfDocument = async (file) => {
                     file.pages[pageIndex].text = textParts.join('\n\n--- Column Break ---\n\n');
                 } else {
                     const formData = new FormData();
-                    formData.append('file', blob, `page_${i}.png`);
+                    formData.append('file', workingBlob, `page_${i}.png`);
                     appendOcrConfigToFormData(formData);
 
                     const response = await fetch('/api/ocr', { method: 'POST', body: formData });
@@ -1353,15 +1403,19 @@ const processPdfDocument = async (file) => {
     updateGlobalButtons();
 };
 
+const showToast = (message, duration = 2500) => {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+};
+
 const copyToClipboard = () => {
     navigator.clipboard.writeText(outputText.value).then(() => {
-        const toast = document.getElementById('toast');
-        if (toast) {
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2500); // Hide after 2.5s
-        }
+        showToast('Copied to clipboard!');
     });
 };
 
@@ -1460,6 +1514,37 @@ const cropImageBlob = (blob, startPct, endPct) => {
             ctx.drawImage(img, cropX, 0, cropW, img.height, 0, 0, cropW, img.height);
             canvas.toBlob((croppedBlob) => {
                 resolve(croppedBlob);
+            }, blob.type || 'image/png');
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(blob);
+    });
+};
+
+const rotateImageBlob = (blob, rotation = 0) => {
+    const normalized = ((rotation % 360) + 360) % 360;
+    if (![90, 180, 270].includes(normalized)) {
+        return Promise.resolve(blob);
+    }
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const swapDimensions = normalized === 90 || normalized === 270;
+            const canvas = document.createElement('canvas');
+            canvas.width = swapDimensions ? img.height : img.width;
+            canvas.height = swapDimensions ? img.width : img.height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((normalized * Math.PI) / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            canvas.toBlob((rotatedBlob) => {
+                if (!rotatedBlob) {
+                    reject(new Error('Failed to rotate image'));
+                    return;
+                }
+                resolve(rotatedBlob);
             }, blob.type || 'image/png');
         };
         img.onerror = reject;

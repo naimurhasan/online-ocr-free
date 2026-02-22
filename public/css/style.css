@@ -649,6 +649,86 @@ button {
     color: var(--text-color);
 }
 
+.rotation-clock {
+    width: 132px;
+    height: 132px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    margin: 0.4rem auto 0;
+    position: relative;
+    background: var(--panel-bg);
+}
+
+.rotation-hand {
+    position: absolute;
+    width: 3px;
+    height: 40px;
+    background: var(--primary-color);
+    left: 50%;
+    top: 50%;
+    transform-origin: 50% calc(100% - 5px);
+    transform: translate(-50%, -100%) rotate(0deg);
+    border-radius: 2px;
+    transition: transform 0.2s ease;
+}
+
+.rotation-hand::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.rotation-point {
+    position: absolute;
+    width: 40px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.68rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.rotation-point.active {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.rotation-point-top {
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.rotation-point-right {
+    top: 50%;
+    right: -12px;
+    transform: translateY(-50%);
+}
+
+.rotation-point-bottom {
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.rotation-point-left {
+    top: 50%;
+    left: -12px;
+    transform: translateY(-50%);
+}
+
 .modal-actions {
     display: flex;
     justify-content: flex-end;
