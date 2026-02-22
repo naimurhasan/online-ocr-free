@@ -79,7 +79,6 @@ let progressTimerId = null;
 const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
 const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
 const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';
-const ENCRYPTION_SEED = 'ocr-magic-basic-encryption-v1';
 
 const init = async () => {
     initTheme();
@@ -142,11 +141,7 @@ const setupEventListeners = () => {
     languageSelect.addEventListener('change', saveUserPreferences);
     ocrEngineSelect.addEventListener('change', async () => {
         if (isGoogleVisionSelected()) {
-            const allowed = await ensureGoogleKeyStorageConsent();
-            if (!allowed) {
-                // Keep feature usable, but key won't be persisted.
-                localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, 'declined');
-            }
+            await ensureGoogleKeyStorageConsent();
         }
         saveUserPreferences();
         updateEngineUI();
@@ -281,64 +276,26 @@ const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KE
 const ensureGoogleKeyStorageConsent = async () => {
     const consent = getGoogleStorageConsent();
     if (consent === 'accepted') return true;
-    if (consent === 'declined') {
-        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
-        return false;
-    }
 
     const accepted = window.confirm('Allow this app to use browser cookies/local storage to save your encrypted Google Vision API key on this device?');
-    localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, accepted ? 'accepted' : 'declined');
+    if (accepted) {
+        localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, 'accepted');
+    } else {
+        localStorage.removeItem(GOOGLE_KEY_CONSENT_KEY);
+    }
     if (!accepted) {
         localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
     }
     return accepted;
 };
 
-const getEncryptionKey = async () => {
-    const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.digest('SHA-256', encoder.encode(`${location.origin}:${ENCRYPTION_SEED}`));
-    return crypto.subtle.importKey(
-        'raw',
-        keyMaterial,
-        { name: 'AES-GCM' },
-        false,
-        ['encrypt', 'decrypt']
-    );
-};
-
-const bytesToBase64 = (bytes) => {
-    let binary = '';
-    bytes.forEach((b) => {
-        binary += String.fromCharCode(b);
-    });
-    return btoa(binary);
-};
-
-const base64ToBytes = (base64) => {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-};
-
 const encryptForStorage = async (plainText) => {
-    const key = await getEncryptionKey();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const data = new TextEncoder().encode(plainText);
-    const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
-    return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipherBuffer))}`;
+    return btoa(unescape(encodeURIComponent(plainText)));
 };
 
 const decryptFromStorage = async (payload) => {
-    if (!payload || !payload.includes('.')) return '';
-    const [ivB64, cipherB64] = payload.split('.');
-    const iv = base64ToBytes(ivB64);
-    const cipherBytes = base64ToBytes(cipherB64);
-    const key = await getEncryptionKey();
-    const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBytes);
-    return new TextDecoder().decode(plainBuffer);
+    if (!payload) return '';
+    return decodeURIComponent(escape(atob(payload)));
 };
 
 const persistGoogleKeyIfAllowed = async () => {
