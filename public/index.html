@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OCR Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,11 +21,11 @@
         <!-- Header / Toolbar -->
         <header class="toolbar">
             <div class="logo">
-                <i class="fas fa-magic"></i> OCR Magic
+                <img src="/favicon.svg" alt="OCR Magic" class="logo-icon"> OCR Magic
             </div>
 
             <div class="global-actions">
-                <div class="language-select">
+                <div id="languageWrap" class="language-select">
                     <select id="language">
                         <!-- Bangla is usually best for mixed content too if trained well, but let's keep options -->
                         <option value="ben" selected>Bangla</option>
@@ -34,8 +35,8 @@
                 </div>
                 <div class="language-select">
                     <select id="ocrEngine">
-                        <option value="tesseract" selected>Use Tesseract OCR</option>
-                        <option value="google-vision">Use Google Vision API</option>
+                        <option value="tesseract" selected>Tesseract OCR (Free)</option>
+                        <option value="google-vision">Google Vision API</option>
                     </select>
                 </div>
                 <div id="googleVisionKeyWrap" class="engine-key-wrap hidden">

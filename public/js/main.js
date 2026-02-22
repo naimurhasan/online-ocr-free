@@ -36,6 +36,7 @@ const processBtn = document.getElementById('processBtn');
 const copyBtn = document.getElementById('copyBtn');
 const themeToggleBtn = document.getElementById('themeToggle');
 const languageSelect = document.getElementById('language');
+const languageWrap = document.getElementById('languageWrap');
 const ocrEngineSelect = document.getElementById('ocrEngine');
 const googleVisionKeyWrap = document.getElementById('googleVisionKeyWrap');
 const googleVisionApiKeyInput = document.getElementById('googleVisionApiKey');
@@ -253,6 +254,9 @@ const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim(
 const updateEngineUI = () => {
     if (!googleVisionKeyWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
+    if (languageWrap) {
+        languageWrap.classList.toggle('hidden', isGoogleVisionSelected());
+    }
 };
 
 const appendOcrConfigToFormData = (formData) => {
