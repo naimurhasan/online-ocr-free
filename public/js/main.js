@@ -47,6 +47,10 @@ const reviewLanguage = document.getElementById('reviewLanguage');
 const reviewColumns = document.getElementById('reviewColumns');
 const reviewSelectionCount = document.getElementById('reviewSelectionCount');
 const reviewEngine = document.getElementById('reviewEngine');
+const exportModal = document.getElementById('exportModal');
+const cancelExportBtn = document.getElementById('cancelExportBtn');
+const exportCombinedBtn = document.getElementById('exportCombinedBtn');
+const exportZipBtn = document.getElementById('exportZipBtn');
 const overallProgress = document.getElementById('overallProgress');
 const overallProgressText = document.getElementById('overallProgressText');
 const overallEtaText = document.getElementById('overallEtaText');
@@ -72,9 +76,15 @@ let batchProgress = {
 
 let progressTimerId = null;
 
-const init = () => {
+const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
+const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
+const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';
+const ENCRYPTION_SEED = 'ocr-magic-basic-encryption-v1';
+
+const init = async () => {
     initTheme();
     setupEventListeners();
+    await loadUserPreferences();
     updateEngineUI();
     updateOverallProgressUI();
     updateGlobalButtons();
@@ -116,21 +126,36 @@ const setupEventListeners = () => {
 
     // Global Actions
     clearAllBtn.addEventListener('click', clearAll);
-    downloadAllBtn.addEventListener('click', downloadAllZip);
+    downloadAllBtn.addEventListener('click', openExportModal);
 
     // Result Actions
     processBtn.addEventListener('click', handleProcessClick);
     copyBtn.addEventListener('click', copyToClipboard);
     cancelReviewBtn.addEventListener('click', closeReviewModal);
     confirmReviewBtn.addEventListener('click', startBatchProcessing);
+    cancelExportBtn.addEventListener('click', closeExportModal);
+    exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
+    exportZipBtn.addEventListener('click', downloadAllZip);
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
-    ocrEngineSelect.addEventListener('change', () => {
+    languageSelect.addEventListener('change', saveUserPreferences);
+    ocrEngineSelect.addEventListener('change', async () => {
+        if (isGoogleVisionSelected()) {
+            const allowed = await ensureGoogleKeyStorageConsent();
+            if (!allowed) {
+                // Keep feature usable, but key won't be persisted.
+                localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, 'declined');
+            }
+        }
+        saveUserPreferences();
         updateEngineUI();
         updateGlobalButtons();
     });
-    googleVisionApiKeyInput.addEventListener('input', updateGlobalButtons);
+    googleVisionApiKeyInput.addEventListener('input', async () => {
+        await persistGoogleKeyIfAllowed();
+        updateGlobalButtons();
+    });
 
     // Pagination
     document.getElementById('prevPageBtn').addEventListener('click', () => navigatePage(-1));
@@ -240,6 +265,127 @@ const appendOcrConfigToFormData = (formData) => {
     formData.append('engine', ocrEngineSelect.value);
     if (isGoogleVisionSelected()) {
         formData.append('googleApiKey', getGoogleVisionApiKey());
+    }
+};
+
+const saveUserPreferences = () => {
+    const prefs = {
+        language: languageSelect.value,
+        engine: ocrEngineSelect.value
+    };
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+};
+
+const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KEY);
+
+const ensureGoogleKeyStorageConsent = async () => {
+    const consent = getGoogleStorageConsent();
+    if (consent === 'accepted') return true;
+    if (consent === 'declined') {
+        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+        return false;
+    }
+
+    const accepted = window.confirm('Allow this app to use browser cookies/local storage to save your encrypted Google Vision API key on this device?');
+    localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, accepted ? 'accepted' : 'declined');
+    if (!accepted) {
+        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+    }
+    return accepted;
+};
+
+const getEncryptionKey = async () => {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.digest('SHA-256', encoder.encode(`${location.origin}:${ENCRYPTION_SEED}`));
+    return crypto.subtle.importKey(
+        'raw',
+        keyMaterial,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
+    );
+};
+
+const bytesToBase64 = (bytes) => {
+    let binary = '';
+    bytes.forEach((b) => {
+        binary += String.fromCharCode(b);
+    });
+    return btoa(binary);
+};
+
+const base64ToBytes = (base64) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+};
+
+const encryptForStorage = async (plainText) => {
+    const key = await getEncryptionKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = new TextEncoder().encode(plainText);
+    const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipherBuffer))}`;
+};
+
+const decryptFromStorage = async (payload) => {
+    if (!payload || !payload.includes('.')) return '';
+    const [ivB64, cipherB64] = payload.split('.');
+    const iv = base64ToBytes(ivB64);
+    const cipherBytes = base64ToBytes(cipherB64);
+    const key = await getEncryptionKey();
+    const plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBytes);
+    return new TextDecoder().decode(plainBuffer);
+};
+
+const persistGoogleKeyIfAllowed = async () => {
+    if (!googleVisionApiKeyInput) return;
+    const keyValue = getGoogleVisionApiKey();
+
+    // Remove persisted key when field is cleared
+    if (!keyValue) {
+        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+        return;
+    }
+
+    // Ask consent only when user is actively trying to use/save Google key
+    if (!isGoogleVisionSelected()) return;
+    const allowed = await ensureGoogleKeyStorageConsent();
+    if (!allowed) return;
+
+    try {
+        const encrypted = await encryptForStorage(keyValue);
+        localStorage.setItem(GOOGLE_KEY_STORAGE_KEY, encrypted);
+    } catch (err) {
+        console.error('Failed to encrypt/store Google key:', err);
+    }
+};
+
+const loadUserPreferences = async () => {
+    try {
+        const prefsRaw = localStorage.getItem(PREFS_STORAGE_KEY);
+        if (prefsRaw) {
+            const prefs = JSON.parse(prefsRaw);
+            if (prefs.language) languageSelect.value = prefs.language;
+            if (prefs.engine) ocrEngineSelect.value = prefs.engine;
+        }
+    } catch (err) {
+        console.warn('Failed to load preferences:', err);
+    }
+
+    // Load encrypted key only if user already granted consent
+    if (getGoogleStorageConsent() !== 'accepted') return;
+    try {
+        const encrypted = localStorage.getItem(GOOGLE_KEY_STORAGE_KEY);
+        if (!encrypted) return;
+        const decrypted = await decryptFromStorage(encrypted);
+        if (decrypted) googleVisionApiKeyInput.value = decrypted;
+    } catch (err) {
+        console.warn('Failed to decrypt stored Google key:', err);
+        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
     }
 };
 
@@ -922,6 +1068,16 @@ const closeReviewModal = () => {
     reviewModal.classList.add('hidden');
 };
 
+const openExportModal = () => {
+    const filesToExport = collectDoneFilesForExport();
+    if (filesToExport.length === 0) return;
+    exportModal.classList.remove('hidden');
+};
+
+const closeExportModal = () => {
+    exportModal.classList.add('hidden');
+};
+
 const startProgressTimer = () => {
     stopProgressTimer();
     progressTimerId = setInterval(() => {
@@ -1248,28 +1404,55 @@ const copyToClipboard = () => {
     });
 };
 
-const downloadAllZip = async () => {
-    // Collect all pages from all files
-    let filesToZip = [];
-
+const collectDoneFilesForExport = () => {
+    const filesToExport = [];
     filesData.forEach(f => {
-        if (f.status === 'done') {
-            if (f.type === 'pdf') {
-                f.pages.forEach(p => {
-                    if (p.text) {
-                        filesToZip.push({
-                            filename: `${f.name}_page_${p.pageNum}.txt`,
-                            text: p.text
-                        });
-                    }
-                });
-            } else if (f.text) {
-                filesToZip.push({ filename: f.name + '.txt', text: f.text });
-            }
+        if (f.status !== 'done') return;
+
+        if (f.type === 'pdf') {
+            f.pages.forEach(p => {
+                if (p.text) {
+                    filesToExport.push({
+                        filename: `${f.name}_page_${p.pageNum}.txt`,
+                        text: p.text
+                    });
+                }
+            });
+            return;
+        }
+
+        if (f.text) {
+            filesToExport.push({
+                filename: `${f.name}.txt`,
+                text: f.text
+            });
         }
     });
+    return filesToExport;
+};
 
+const downloadCombinedTxt = () => {
+    const filesToExport = collectDoneFilesForExport();
+    if (filesToExport.length === 0) return;
+    closeExportModal();
+
+    const combinedText = filesToExport
+        .map((item, index) => `===== ${item.filename} =====\n${item.text}`)
+        .join('\n\n');
+
+    const blob = new Blob([combinedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ocr_results_combined_${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+const downloadAllZip = async () => {
+    const filesToZip = collectDoneFilesForExport();
     if (filesToZip.length === 0) return;
+    closeExportModal();
 
     try {
         downloadAllBtn.textContent = 'Zipping...';
@@ -1295,7 +1478,7 @@ const downloadAllZip = async () => {
         console.error(err);
         alert('Download failed');
     } finally {
-        downloadAllBtn.innerHTML = '<i class="fas fa-download"></i> Download All (Zip)';
+        downloadAllBtn.innerHTML = '<i class="fas fa-file-export"></i> Export';
     }
 };
 

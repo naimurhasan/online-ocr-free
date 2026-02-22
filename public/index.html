@@ -48,7 +48,7 @@
                 <input type="file" id="fileInput" multiple accept="image/*,application/pdf" hidden>
 
                 <button id="downloadAllBtn" class="btn-action" disabled>
-                    <i class="fas fa-download"></i> Download All (Zip)
+                    <i class="fas fa-file-export"></i> Export
                 </button>
 
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
@@ -201,6 +201,19 @@
             <div class="modal-actions" style="margin-top: 1.5rem;">
                 <button id="cancelReviewBtn" class="btn-secondary">Cancel</button>
                 <button id="confirmReviewBtn" class="btn-primary">Start All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Choice Modal -->
+    <div id="exportModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Export OCR Results</h3>
+            <p class="settings-file-name">Choose export format for processed files.</p>
+            <div class="modal-actions" style="margin-top: 1.5rem;">
+                <button id="cancelExportBtn" class="btn-secondary">Cancel</button>
+                <button id="exportCombinedBtn" class="btn-secondary">Combined .txt</button>
+                <button id="exportZipBtn" class="btn-primary">Separate files (.zip)</button>
             </div>
         </div>
     </div>

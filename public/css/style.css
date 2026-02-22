@@ -49,13 +49,14 @@ body {
 
 /* Toolbar */
 .toolbar {
-    height: 60px;
+    min-height: 60px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 1.5rem;
     background-color: var(--bg-color);
+    gap: 1rem;
 }
 
 .logo {
@@ -69,6 +70,8 @@ body {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 /* Dashboard Grid */
@@ -487,6 +490,12 @@ button {
     background-color: var(--hover-bg);
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+}
+
+.btn-action:hover {
+    background-color: var(--panel-bg);
 }
 
 .btn-icon {
@@ -590,6 +599,7 @@ button {
     max-width: 90%;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border-color);
+    animation: modal-enter 0.18s ease-out;
 }
 
 .modal-content h3 {
@@ -652,6 +662,76 @@ button {
     border-radius: 8px;
     padding: 0.65rem 0.8rem;
     font-size: 0.9rem;
+}
+
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+select,
+.engine-key-wrap input,
+.btn-secondary,
+.btn-action {
+    height: 38px;
+}
+
+.btn-primary {
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 240px 1fr 360px;
+    }
+}
+
+@media (max-width: 960px) {
+    body {
+        height: auto;
+        overflow: auto;
+    }
+
+    .app-container {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    section {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        min-height: 340px;
+    }
+
+    section:last-child {
+        border-bottom: none;
+    }
+
+    .toolbar {
+        padding: 0.9rem 1rem;
+    }
+
+    .logo {
+        font-size: 1rem;
+    }
 }
 
 .settings-file-btn {
