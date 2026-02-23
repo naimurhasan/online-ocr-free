@@ -102,7 +102,7 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
 };
 
-const extractTextWithOpenRouter = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain', engineCode, customModel = '') => {
+const extractTextWithOpenRouter = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain', engineCode, customModel = '', customPrompt = '') => {
     const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     if (!resolvedKey) {
         throw new Error('OpenRouter API key is required');
@@ -139,7 +139,11 @@ const extractTextWithOpenRouter = async (imagePath, mimeType, lang, openRouterAp
                     content: [
                         {
                             type: 'text',
-                            text: `You are an OCR engine. Extract all readable text from this image.\nRules:\n- ${formatInstruction}\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`
+                            text: customPrompt
+                                ? customPrompt
+                                    .replace('{{FORMAT_INSTRUCTION}}', formatInstruction)
+                                    .replace('{{LANGUAGE_HINT}}', languageHint || 'auto')
+                                : `You are an OCR engine. Extract all readable text from this image.\nRules:\n- ${formatInstruction}\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`
                         },
                         {
                             type: 'image_url',
@@ -278,6 +282,8 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     const openRouterApiKey = options.openRouterApiKey || '';
     const openRouterOutputFormat = options.openRouterOutputFormat || 'plain';
     const openRouterCustomModel = options.openRouterCustomModel || '';
+    const customPrompt = options.customPrompt || '';
+    const skipPreprocessing = !!options.skipPreprocessing;
     const useTesseract = engine === 'tesseract';
     const useGoogleVision = engine === 'google-vision';
     const useOpenRouter = Object.keys(OPENROUTER_MODELS).includes(engine) || engine === 'openrouter-custom';
@@ -300,10 +306,10 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
                 text = await extractTextWithGoogleVision(image, lang, googleApiKey);
             } else if (useOpenRouter) {
                 console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
-                text = await extractTextWithOpenRouter(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel);
+                text = await extractTextWithOpenRouter(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel, customPrompt);
             } else {
-                const processedImage = saveSteps
-                    ? await preprocessImageWithSteps(image, `page${i + 1}`)
+                const processedImage = skipPreprocessing
+                    ? image
                     : await preprocessImageWithSteps(image, `page${i + 1}`);
 
                 console.log('🔍 Running OCR with Tesseract...');
@@ -332,10 +338,10 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
             textResult = await extractTextWithGoogleVision(filePath, lang, googleApiKey);
         } else if (useOpenRouter) {
             console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
-            textResult = await extractTextWithOpenRouter(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel);
+            textResult = await extractTextWithOpenRouter(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel, customPrompt);
         } else {
-            const processedImage = saveSteps
-                ? await preprocessImageWithSteps(filePath, 'single')
+            const processedImage = skipPreprocessing
+                ? filePath
                 : await preprocessImageWithSteps(filePath, 'single');
 
             console.log('🔍 Running OCR with Tesseract...');

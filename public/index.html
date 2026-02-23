@@ -116,6 +116,10 @@
                     <i class="fas fa-file-export"></i> Export
                 </button>
 
+                <button id="advancedSettingsBtn" class="theme-toggle-btn" title="Advanced Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
                     <i class="fas fa-moon"></i>
                 </button>
@@ -276,6 +280,10 @@
                     <span>OCR Engine</span>
                     <strong id="reviewEngine">-</strong>
                 </div>
+                <div class="review-row hidden" id="reviewConcurrencyRow">
+                    <span>Concurrent Threads</span>
+                    <strong id="reviewConcurrency">-</strong>
+                </div>
             </div>
             <div class="modal-actions" style="margin-top: 1.5rem;">
                 <button id="cancelReviewBtn" class="btn-secondary">Cancel</button>
@@ -314,6 +322,70 @@
             </div>
         </div>
     </div>
+
+    <!-- Advanced Settings Modal -->
+    <div id="advancedSettingsModal" class="modal hidden">
+        <div class="modal-content adv-settings-modal">
+            <h3><i class="fas fa-cog"></i> Advanced Settings</h3>
+            <p class="settings-file-name">Configure processing behavior and AI prompt customization.</p>
+
+            <div class="adv-settings-body">
+                <!-- Concurrent Threads -->
+                <div class="adv-setting-group">
+                    <div class="adv-setting-label">
+                        <label for="concurrentThreadsSlider">Concurrent Threads</label>
+                        <span class="adv-setting-value" id="concurrentThreadsValue">1</span>
+                    </div>
+                    <p class="adv-setting-hint">Process multiple files simultaneously. Higher values use more resources.
+                    </p>
+                    <!-- max is dynamically set from server's MAX_CONCURRENT_THREADS env var -->
+                    <input type="range" id="concurrentThreadsSlider" min="1" max="4" value="1" class="adv-slider">
+                </div>
+
+                <!-- Image Preprocessing -->
+                <div class="adv-setting-group">
+                    <div class="adv-setting-label">
+                        <label for="preprocessingToggle">Image Preprocessing</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="preprocessingToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <p class="adv-setting-hint">Grayscale, sharpen & threshold pipeline. Disable for AI models if raw
+                        images give better results.</p>
+                </div>
+
+                <!-- Custom AI Prompt -->
+                <div class="adv-setting-group">
+                    <div class="adv-setting-label">
+                        <label for="customPromptInput">Custom AI Prompt</label>
+                        <span class="adv-info-icon" id="promptInfoIcon"
+                            data-tooltip="Custom prompts only apply to AI models (OpenRouter). Tesseract and Google Vision ignore this field.">
+                            <i class="fas fa-info-circle"></i>
+                        </span>
+                    </div>
+                    <textarea id="customPromptInput" class="adv-prompt-textarea" rows="4"
+                        placeholder="Leave empty to use the default prompt. Use {{FORMAT_INSTRUCTION}} and {{LANGUAGE_HINT}} as placeholders."></textarea>
+                    <button type="button" id="toggleDefaultPromptBtn" class="btn-text-only adv-show-default-btn">
+                        <i class="fas fa-chevron-right"></i> Show default prompt
+                    </button>
+                    <pre id="defaultPromptDisplay" class="adv-default-prompt hidden"></pre>
+                </div>
+            </div>
+
+            <div class="modal-actions adv-settings-actions">
+                <button id="resetAllSettingsBtn" class="btn-secondary adv-reset-btn"
+                    title="Reset all settings to defaults">
+                    <i class="fas fa-undo"></i> Reset All
+                </button>
+                <div class="adv-settings-actions-right">
+                    <button id="cancelAdvSettingsBtn" class="btn-secondary">Cancel</button>
+                    <button id="saveAdvSettingsBtn" class="btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- App Alert Modal -->
     <div id="appAlertModal" class="modal hidden">
         <div class="modal-content app-alert-content">

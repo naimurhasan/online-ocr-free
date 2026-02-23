@@ -15,22 +15,28 @@ exports.processFile = async (req, res) => {
         const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
         const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
         const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
+        const customPrompt = (req.body.customPrompt || '').trim();
+        const skipPreprocessing = req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true;
 
         if (engine === 'gemma-openrouter' && !openRouterApiKey) {
             if (req.file) deleteFile(req.file.path);
             return res.status(400).json({ error: 'OpenRouter API key is required. Provide it in UI or set OPENROUTER_API_KEY in .env.' });
         }
 
-        console.log(`Processing file: ${filePath} with lang: ${lang} and engine: ${engine}`);
+        const reqId = Date.now() % 100000;
+        console.log(`⏱️ [REQ-${reqId}] START: ${req.file.originalname} (engine: ${engine}) at ${new Date().toLocaleTimeString()}`);
 
         const textResult = await extractText(filePath, mimetype, lang, true, {
             engine,
             googleApiKey,
             openRouterApiKey,
             openRouterOutputFormat,
-            openRouterCustomModel
+            openRouterCustomModel,
+            customPrompt,
+            skipPreprocessing
         });
 
+        console.log(`✅ [REQ-${reqId}] DONE: ${req.file.originalname} at ${new Date().toLocaleTimeString()}`);
         deleteFile(filePath);
         res.json({ text: textResult });
 
@@ -52,6 +58,8 @@ exports.processBatch = async (req, res) => {
     const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
     const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
+    const customPrompt = (req.body.customPrompt || '').trim();
+    const skipPreprocessing = req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true;
     const files = req.files;
 
     // Immediate response
@@ -63,7 +71,9 @@ exports.processBatch = async (req, res) => {
         googleApiKey,
         openRouterApiKey,
         openRouterOutputFormat,
-        openRouterCustomModel
+        openRouterCustomModel,
+        customPrompt,
+        skipPreprocessing
     });
 };
 

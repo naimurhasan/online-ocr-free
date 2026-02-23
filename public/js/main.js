@@ -59,6 +59,8 @@ const reviewLanguage = document.getElementById('reviewLanguage');
 const reviewColumns = document.getElementById('reviewColumns');
 const reviewSelectionCount = document.getElementById('reviewSelectionCount');
 const reviewEngine = document.getElementById('reviewEngine');
+const reviewConcurrencyRow = document.getElementById('reviewConcurrencyRow');
+const reviewConcurrency = document.getElementById('reviewConcurrency');
 const exportModal = document.getElementById('exportModal');
 const cancelExportBtn = document.getElementById('cancelExportBtn');
 const exportCombinedBtn = document.getElementById('exportCombinedBtn');
@@ -73,6 +75,31 @@ const overallProgressText = document.getElementById('overallProgressText');
 const overallEtaText = document.getElementById('overallEtaText');
 const overallProgressFill = document.getElementById('overallProgressFill');
 const overallProgressCurrent = document.getElementById('overallProgressCurrent');
+
+// Advanced Settings Modal DOM
+const advancedSettingsBtn = document.getElementById('advancedSettingsBtn');
+const advancedSettingsModal = document.getElementById('advancedSettingsModal');
+const cancelAdvSettingsBtn = document.getElementById('cancelAdvSettingsBtn');
+const saveAdvSettingsBtn = document.getElementById('saveAdvSettingsBtn');
+const resetAllSettingsBtn = document.getElementById('resetAllSettingsBtn');
+const concurrentThreadsSlider = document.getElementById('concurrentThreadsSlider');
+const concurrentThreadsValue = document.getElementById('concurrentThreadsValue');
+const preprocessingToggle = document.getElementById('preprocessingToggle');
+const customPromptInput = document.getElementById('customPromptInput');
+const toggleDefaultPromptBtn = document.getElementById('toggleDefaultPromptBtn');
+const defaultPromptDisplay = document.getElementById('defaultPromptDisplay');
+const promptInfoIcon = document.getElementById('promptInfoIcon');
+
+// Advanced settings state
+let serverMaxThreads = 4;
+let serverDefaultPrompt = '';
+let advancedSettings = {
+    concurrentThreads: 1,
+    customPrompt: '',
+    skipPreprocessing: false
+};
+
+const ADVANCED_SETTINGS_KEY = 'ocr_magic_advanced_settings_v1';
 
 // --- Initialization ---
 // Global Columns Configuration
@@ -147,9 +174,24 @@ const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';
 const OPENROUTER_KEY_STORAGE_KEY = 'ocr_magic_openrouter_key_enc_v1';
 const OPENROUTER_KEY_CONSENT_KEY = 'ocr_magic_openrouter_key_cookie_consent_v1';
 
+const fetchServerConfig = async () => {
+    try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        serverMaxThreads = Math.max(1, data.maxConcurrentThreads || 4);
+        serverDefaultPrompt = data.defaultPrompt || '';
+        if (concurrentThreadsSlider) {
+            concurrentThreadsSlider.max = serverMaxThreads;
+        }
+    } catch (err) {
+        console.warn('Failed to fetch server config:', err);
+    }
+};
+
 const init = async () => {
     initTheme();
     setupEventListeners();
+    await fetchServerConfig();
     await loadUserPreferences();
     updateEngineUI();
     updateOverallProgressUI();
@@ -211,6 +253,41 @@ const setupEventListeners = () => {
             resolveAppAlert(false);
         }
     });
+
+    // Advanced Settings Modal
+    if (advancedSettingsBtn) {
+        advancedSettingsBtn.addEventListener('click', openAdvancedSettings);
+    }
+    if (cancelAdvSettingsBtn) {
+        cancelAdvSettingsBtn.addEventListener('click', closeAdvancedSettings);
+    }
+    if (saveAdvSettingsBtn) {
+        saveAdvSettingsBtn.addEventListener('click', saveAdvancedSettings);
+    }
+    if (resetAllSettingsBtn) {
+        resetAllSettingsBtn.addEventListener('click', resetAllSettings);
+    }
+    if (concurrentThreadsSlider) {
+        concurrentThreadsSlider.addEventListener('input', () => {
+            concurrentThreadsValue.textContent = concurrentThreadsSlider.value;
+        });
+    }
+    if (toggleDefaultPromptBtn) {
+        toggleDefaultPromptBtn.addEventListener('click', () => {
+            const isHidden = defaultPromptDisplay.classList.contains('hidden');
+            defaultPromptDisplay.classList.toggle('hidden', !isHidden);
+            toggleDefaultPromptBtn.classList.toggle('expanded', isHidden);
+            toggleDefaultPromptBtn.innerHTML = isHidden
+                ? '<i class="fas fa-chevron-right"></i> Hide default prompt'
+                : '<i class="fas fa-chevron-right"></i> Show default prompt';
+        });
+    }
+    // Close modal on backdrop click
+    if (advancedSettingsModal) {
+        advancedSettingsModal.addEventListener('click', (e) => {
+            if (e.target === advancedSettingsModal) closeAdvancedSettings();
+        });
+    }
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -406,6 +483,14 @@ const appendOcrConfigToFormData = (formData) => {
         if (isOpenRouterCustomSelected() && openRouterCustomModelInput) {
             formData.append('openRouterCustomModel', openRouterCustomModelInput.value.trim());
         }
+        // Send custom prompt for AI models
+        if (advancedSettings.customPrompt) {
+            formData.append('customPrompt', advancedSettings.customPrompt);
+        }
+    }
+    // Send preprocessing toggle
+    if (advancedSettings.skipPreprocessing) {
+        formData.append('skipPreprocessing', 'true');
     }
 };
 
@@ -417,6 +502,102 @@ const saveUserPreferences = () => {
         openRouterCustomModel: openRouterCustomModelInput?.value || ''
     };
     localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+};
+
+const saveAdvancedSettingsToStorage = () => {
+    localStorage.setItem(ADVANCED_SETTINGS_KEY, JSON.stringify(advancedSettings));
+};
+
+const loadAdvancedSettingsFromStorage = () => {
+    try {
+        const raw = localStorage.getItem(ADVANCED_SETTINGS_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            advancedSettings.concurrentThreads = Math.min(Math.max(1, parsed.concurrentThreads || 1), serverMaxThreads);
+            advancedSettings.customPrompt = parsed.customPrompt || '';
+            advancedSettings.skipPreprocessing = !!parsed.skipPreprocessing;
+        }
+    } catch (err) {
+        console.warn('Failed to load advanced settings:', err);
+    }
+};
+
+const openAdvancedSettings = () => {
+    // Populate modal with current settings
+    if (concurrentThreadsSlider) {
+        concurrentThreadsSlider.max = serverMaxThreads;
+        concurrentThreadsSlider.value = advancedSettings.concurrentThreads;
+        concurrentThreadsValue.textContent = advancedSettings.concurrentThreads;
+    }
+    if (preprocessingToggle) {
+        preprocessingToggle.checked = !advancedSettings.skipPreprocessing;
+    }
+    if (customPromptInput) {
+        customPromptInput.value = advancedSettings.customPrompt;
+    }
+    if (defaultPromptDisplay) {
+        defaultPromptDisplay.textContent = serverDefaultPrompt || '(Could not load default prompt from server)';
+        defaultPromptDisplay.classList.add('hidden');
+        toggleDefaultPromptBtn.classList.remove('expanded');
+        toggleDefaultPromptBtn.innerHTML = '<i class="fas fa-chevron-right"></i> Show default prompt';
+    }
+    advancedSettingsModal.classList.remove('hidden');
+};
+
+const closeAdvancedSettings = () => {
+    advancedSettingsModal.classList.add('hidden');
+};
+
+const saveAdvancedSettings = () => {
+    advancedSettings.concurrentThreads = Math.min(
+        Math.max(1, parseInt(concurrentThreadsSlider?.value || '1', 10)),
+        serverMaxThreads
+    );
+    advancedSettings.customPrompt = (customPromptInput?.value || '').trim();
+    advancedSettings.skipPreprocessing = !(preprocessingToggle?.checked ?? true);
+    saveAdvancedSettingsToStorage();
+    closeAdvancedSettings();
+    showToast('Settings saved');
+};
+
+const resetAllSettings = async () => {
+    const confirmed = await showAppConfirm(
+        'This will reset all settings (language, engine, API keys, advanced settings) to their defaults. Continue?',
+        { title: 'Reset All Settings', confirmText: 'Reset', danger: true }
+    );
+    if (!confirmed) return;
+
+    // Clear all stored prefs
+    localStorage.removeItem(PREFS_STORAGE_KEY);
+    localStorage.removeItem(ADVANCED_SETTINGS_KEY);
+    localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+    localStorage.removeItem(GOOGLE_KEY_CONSENT_KEY);
+    localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
+    localStorage.removeItem(OPENROUTER_KEY_CONSENT_KEY);
+
+    // Reset UI controls
+    languageSelect.value = 'eng';
+    ocrEngineSelect.value = 'tesseract';
+    if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = 'plain';
+    if (openRouterCustomModelInput) openRouterCustomModelInput.value = '';
+    if (googleVisionApiKeyInput) googleVisionApiKeyInput.value = '';
+    if (openRouterApiKeyInput) openRouterApiKeyInput.value = '';
+
+    // Reset advanced settings
+    advancedSettings = { concurrentThreads: 1, customPrompt: '', skipPreprocessing: false };
+
+    // Update modal controls
+    if (concurrentThreadsSlider) {
+        concurrentThreadsSlider.value = 1;
+        concurrentThreadsValue.textContent = '1';
+    }
+    if (preprocessingToggle) preprocessingToggle.checked = true;
+    if (customPromptInput) customPromptInput.value = '';
+
+    updateEngineUI();
+    updateGlobalButtons();
+    closeAdvancedSettings();
+    showToast('All settings reset to defaults');
 };
 
 const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KEY);
@@ -574,6 +755,9 @@ const loadUserPreferences = async () => {
     } catch (err) {
         console.warn('Failed to load preferences:', err);
     }
+
+    // Load advanced settings
+    loadAdvancedSettingsFromStorage();
 
     if (getGoogleStorageConsent() === 'accepted') {
         try {
@@ -1546,6 +1730,18 @@ const openReviewModal = () => {
     reviewColumns.textContent = String(columnCount);
     reviewSelectionCount.textContent = `${filesData.length} ${itemLabel}`;
     reviewEngine.textContent = selectedEngine;
+
+    // Show concurrency row only if > 1
+    const threads = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
+    if (reviewConcurrencyRow && reviewConcurrency) {
+        if (threads > 1) {
+            reviewConcurrency.textContent = String(threads);
+            reviewConcurrencyRow.classList.remove('hidden');
+        } else {
+            reviewConcurrencyRow.classList.add('hidden');
+        }
+    }
+
     reviewModal.classList.remove('hidden');
 };
 
@@ -1673,34 +1869,91 @@ const startBatchProcessing = async () => {
         activeFileId = filesToProcess[0].id;
     }
 
-    for (const file of filesToProcess) {
-        batchProgress.currentFileName = file.name;
-        prepareFileForProcessing(file);
-        activeFileId = file.id;
-        renderFileList();
-        renderPreview();
-        renderResult();
-        updateOverallProgressUI();
+    const concurrency = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
 
-        try {
-            if (file.type === 'pdf') {
-                await processPdfDocument(file);
-            } else {
-                await processSingleImage(file);
-            }
-        } catch (err) {
-            console.error('File processing error:', err);
-            file.status = 'error';
-            if (file.type !== 'pdf') {
-                file.text = 'Error: Connection failed';
-            }
+    if (concurrency <= 1) {
+        // Sequential processing (original behavior)
+        for (const file of filesToProcess) {
+            batchProgress.currentFileName = file.name;
+            prepareFileForProcessing(file);
+            activeFileId = file.id;
             renderFileList();
+            renderPreview();
             renderResult();
-            updateGlobalButtons();
+            updateOverallProgressUI();
+
+            try {
+                if (file.type === 'pdf') {
+                    await processPdfDocument(file);
+                } else {
+                    await processSingleImage(file);
+                }
+            } catch (err) {
+                console.error('File processing error:', err);
+                file.status = 'error';
+                if (file.type !== 'pdf') {
+                    file.text = 'Error: Connection failed';
+                }
+                renderFileList();
+                renderResult();
+                updateGlobalButtons();
+            }
+
+            batchProgress.completedFiles += 1;
+            updateOverallProgressUI();
+        }
+    } else {
+        // Concurrent processing using promise-pool pattern
+        const inFlight = new Set();
+        let index = 0;
+
+        const launchNext = () => {
+            if (index >= filesToProcess.length) return null;
+            const file = filesToProcess[index++];
+
+            prepareFileForProcessing(file);
+            renderFileList();
+            updateOverallProgressUI();
+
+            const promise = (async () => {
+                try {
+                    if (file.type === 'pdf') {
+                        await processPdfDocument(file);
+                    } else {
+                        await processSingleImage(file);
+                    }
+                } catch (err) {
+                    console.error('File processing error:', err);
+                    file.status = 'error';
+                    if (file.type !== 'pdf') {
+                        file.text = 'Error: Connection failed';
+                    }
+                }
+                batchProgress.completedFiles += 1;
+                renderFileList();
+                renderResult();
+                updateOverallProgressUI();
+                updateGlobalButtons();
+            })();
+
+            inFlight.add(promise);
+            promise.finally(() => inFlight.delete(promise));
+            return promise;
+        };
+
+        // Fill initial pool
+        while (inFlight.size < concurrency && index < filesToProcess.length) {
+            launchNext();
         }
 
-        batchProgress.completedFiles += 1;
-        updateOverallProgressUI();
+        // As each finishes, launch the next
+        while (inFlight.size > 0) {
+            await Promise.race(inFlight);
+            // Launch more until pool is full or no more files
+            while (inFlight.size < concurrency && index < filesToProcess.length) {
+                launchNext();
+            }
+        }
     }
 
     batchProgress.running = false;
@@ -1790,17 +2043,18 @@ const processPdfDocument = async (file) => {
         }
 
         const totalPagesToProcess = end - start + 1;
+        const concurrency = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
 
+        // Phase 1: Render all pages to blobs sequentially (canvas is main-thread)
+        const pageJobs = [];
         for (let i = start; i <= end; i++) {
             if (batchProgress.running) {
-                batchProgress.currentFileName = `${file.name} (page ${i - start + 1}/${totalPagesToProcess})`;
+                batchProgress.currentFileName = `${file.name} (rendering page ${i - start + 1}/${totalPagesToProcess})`;
                 updateOverallProgressUI();
             }
 
             const pageIndex = file.pages.length;
-            file.currentPage = pageIndex; // Update current page index (0-based) to show progress
 
-            // 1. Render Page to Blob
             const page = await pdf.getPage(i);
             const viewport = page.getViewport({ scale: 2.0 });
             const canvas = document.createElement('canvas');
@@ -1813,59 +2067,93 @@ const processPdfDocument = async (file) => {
             const workingBlob = await rotateImageBlob(blob, file.rotation || 0);
             const imageUrl = URL.createObjectURL(workingBlob);
 
-            // 2. Add to pages array (initially without text)
             file.pages.push({
                 pageNum: i,
                 imgUrl: imageUrl,
                 text: 'Processing...'
             });
 
-            renderPreview(); // Show new page image
-            renderResult();  // Show "Processing..." in text area
+            pageJobs.push({ pageIndex, pageNum: i, workingBlob });
+            renderPreview();
+            renderResult();
+        }
 
-            // 3. Send to OCR (handling columns if active)
-            try {
-                if (fileColumns.active && fileColumns.numColumns > 1) {
-                    const textParts = [];
-                    const splits = [0, ...fileColumns.splitPositions, 1];
+        // Phase 2: Send OCR requests concurrently using promise-pool
+        if (batchProgress.running) {
+            batchProgress.currentFileName = `${file.name} (OCR: 0/${totalPagesToProcess})`;
+            updateOverallProgressUI();
+        }
 
-                    for (let c = 0; c < splits.length - 1; c++) {
-                        const startPct = splits[c];
-                        const endPct = splits[c + 1];
-                        const croppedBlob = await cropImageBlob(workingBlob, startPct, endPct);
+        let ocrCompleted = 0;
+        const inFlight = new Set();
+        let jobIndex = 0;
 
+        const launchOcrJob = (job) => {
+            const promise = (async () => {
+                try {
+                    if (fileColumns.active && fileColumns.numColumns > 1) {
+                        const textParts = [];
+                        const splits = [0, ...fileColumns.splitPositions, 1];
+
+                        for (let c = 0; c < splits.length - 1; c++) {
+                            const startPct = splits[c];
+                            const endPct = splits[c + 1];
+                            const croppedBlob = await cropImageBlob(job.workingBlob, startPct, endPct);
+
+                            const formData = new FormData();
+                            formData.append('file', croppedBlob, `page_${job.pageNum}_col_${c + 1}.png`);
+                            appendOcrConfigToFormData(formData);
+
+                            const response = await fetch('/api/ocr', { method: 'POST', body: formData });
+                            const data = await response.json();
+
+                            if (response.ok) {
+                                textParts.push(data.text);
+                            } else {
+                                textParts.push(`[Error in Column ${c + 1}: ${data.error || 'Unknown error'}]`);
+                            }
+                        }
+                        file.pages[job.pageIndex].text = textParts.join('\n\n--- Column Break ---\n\n');
+                    } else {
                         const formData = new FormData();
-                        formData.append('file', croppedBlob, `page_${i}_col_${c + 1}.png`);
+                        formData.append('file', job.workingBlob, `page_${job.pageNum}.png`);
                         appendOcrConfigToFormData(formData);
 
                         const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                         const data = await response.json();
-
                         if (response.ok) {
-                            textParts.push(data.text);
+                            file.pages[job.pageIndex].text = data.text;
                         } else {
-                            textParts.push(`[Error in Column ${c + 1}: ${data.error || 'Unknown error'}]`);
+                            file.pages[job.pageIndex].text = "Error: " + (data.error || 'Unknown error');
                         }
                     }
-                    file.pages[pageIndex].text = textParts.join('\n\n--- Column Break ---\n\n');
-                } else {
-                    const formData = new FormData();
-                    formData.append('file', workingBlob, `page_${i}.png`);
-                    appendOcrConfigToFormData(formData);
-
-                    const response = await fetch('/api/ocr', { method: 'POST', body: formData });
-                    const data = await response.json();
-                    if (response.ok) {
-                        file.pages[pageIndex].text = data.text;
-                    } else {
-                        file.pages[pageIndex].text = "Error: " + (data.error || 'Unknown error');
-                    }
+                } catch (err) {
+                    file.pages[job.pageIndex].text = "Error: Connection failed";
                 }
-            } catch (err) {
-                file.pages[pageIndex].text = "Error: Connection failed";
-            }
+                ocrCompleted++;
+                if (batchProgress.running) {
+                    batchProgress.currentFileName = `${file.name} (OCR: ${ocrCompleted}/${totalPagesToProcess})`;
+                    updateOverallProgressUI();
+                }
+                renderResult();
+            })();
 
-            renderResult(); // Update text area with result
+            inFlight.add(promise);
+            promise.finally(() => inFlight.delete(promise));
+            return promise;
+        };
+
+        // Fill initial pool
+        while (inFlight.size < concurrency && jobIndex < pageJobs.length) {
+            launchOcrJob(pageJobs[jobIndex++]);
+        }
+
+        // As each finishes, launch the next
+        while (inFlight.size > 0) {
+            await Promise.race(inFlight);
+            while (inFlight.size < concurrency && jobIndex < pageJobs.length) {
+                launchOcrJob(pageJobs[jobIndex++]);
+            }
         }
 
         if (batchProgress.running) {

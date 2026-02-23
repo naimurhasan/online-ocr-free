@@ -37,7 +37,12 @@ app.get('/', (req, res) => {
 const ocrController = require('./src/controllers/ocrController');
 
 // API Endpoints
-// API Endpoints
+app.get('/api/config', (req, res) => {
+  const maxThreads = Math.max(1, parseInt(process.env.MAX_CONCURRENT_THREADS || '4', 10));
+  const defaultPrompt = 'You are an OCR engine. Extract all readable text from this image.\nRules:\n- {{FORMAT_INSTRUCTION}}\n- Do not translate text.\nLanguage hint: {{LANGUAGE_HINT}}.';
+  res.json({ maxConcurrentThreads: maxThreads, defaultPrompt });
+});
+
 app.post('/api/ocr', upload.single('file'), ocrController.processFile);
 app.post('/api/ocr/batch', upload.array('files'), ocrController.processBatch);
 app.post('/api/download-zip', ocrController.downloadZip);
