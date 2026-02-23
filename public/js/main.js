@@ -205,9 +205,40 @@ const setupEventListeners = () => {
     }
     fileInput.addEventListener('change', handleFileSelect);
 
-    // Drag & Drop
+    // File list interactions (delegated)
     fileList.addEventListener('click', (e) => {
-        // If clicking the empty state (not the list container itself), open file dialog
+        const removeBtn = e.target.closest('.remove-file-btn');
+        if (removeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const { fileId } = removeBtn.dataset;
+            if (fileId) removeFile(fileId);
+            return;
+        }
+
+        const settingsBtn = e.target.closest('.settings-file-btn');
+        if (settingsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const { fileId } = settingsBtn.dataset;
+            if (fileId) openSettings(fileId);
+            return;
+        }
+
+        const addMoreItem = e.target.closest('.add-more-item');
+        if (addMoreItem) {
+            if (!batchProgress.running) fileInput.click();
+            return;
+        }
+
+        const fileItem = e.target.closest('.file-item[data-file-id]');
+        if (fileItem) {
+            const { fileId } = fileItem.dataset;
+            if (fileId) selectFile(fileId);
+            return;
+        }
+
+        // If clicking the empty state, open file dialog
         if (e.target.closest('.empty-state') && !batchProgress.running) {
             fileInput.click();
         }
@@ -790,6 +821,11 @@ const loadUserPreferences = async () => {
 const handleFileSelect = async (e) => {
     if (batchProgress.running) return;
     const newFiles = Array.from(e.target.files);
+
+    // Clear input immediately so the exact same file can be selected again
+    // even if it was just deleted or if processing errors out below.
+    if (fileInput) fileInput.value = '';
+
     if (newFiles.length === 0) return;
 
     // Show loading state if needed
@@ -808,7 +844,6 @@ const handleFileSelect = async (e) => {
         selectFile(filesData[filesData.length - 1].id);
     }
 
-    fileInput.value = '';
     // addFilesBtn.disabled = false;
     // addFilesBtn.innerHTML = '<i class="fas fa-plus"></i> Add Files';
     updateGlobalButtons();
@@ -894,11 +929,18 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const thumbUrl = URL.createObjectURL(blob);
 
+        // File may have been removed while thumbnail was rendering.
+        const stillPresent = filesData.some((f) => f.id === fileObj.id);
+        if (!stillPresent) {
+            URL.revokeObjectURL(thumbUrl);
+            return;
+        }
+
         // Update state
         fileObj.previewUrl = thumbUrl;
 
         // Update UI if this file is in the list
-        const imgEl = document.querySelector(`div[onclick*="${fileObj.id}"] img`);
+        const imgEl = fileList.querySelector(`.file-item[data-file-id="${fileObj.id}"] img`);
         if (imgEl) imgEl.src = thumbUrl;
 
         // If this file is currently active/selected, update the main preview too (if it was showing the placeholder)
@@ -912,8 +954,18 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
 };
 
 const selectFile = (id) => {
-    activeFileId = id;
     const file = filesData.find(f => f.id === id);
+    if (!file) {
+        activeFileId = null;
+        syncColumnsFromFile(null);
+        updateColumnsButtonUI();
+        renderFileList();
+        renderPreview();
+        renderResult();
+        return;
+    }
+
+    activeFileId = id;
     syncColumnsFromFile(file);
     updateColumnsButtonUI();
     resetZoomPan();
@@ -967,12 +1019,11 @@ const removeFile = (id) => {
                 const nextIndex = Math.min(fileIndex, filesData.length - 1);
                 selectFile(filesData[nextIndex].id);
                 return;
-            } else {
-                renderPreview();
-                renderResult();
             }
         }
         renderFileList();
+        renderPreview();
+        renderResult();
         updateGlobalButtons();
     }
 };
@@ -1181,16 +1232,12 @@ const renderFileList = () => {
         <i class="fas fa-plus"></i>
         <span class="file-name">Add more files</span>
     `;
-    addMoreItem.onclick = () => {
-        if (batchProgress.running) return;
-        fileInput.click();
-    };
     fileList.appendChild(addMoreItem);
 
     filesData.forEach(file => {
         const item = document.createElement('div');
         item.className = `file-item ${file.id === activeFileId ? 'active' : ''}`;
-        item.onclick = () => selectFile(file.id);
+        item.dataset.fileId = file.id;
 
         let statusIcon = '';
         if (file.status === 'processing') statusIcon = '<div class="status-overlay"><i class="fas fa-spinner fa-spin"></i></div>';
@@ -1199,13 +1246,13 @@ const renderFileList = () => {
 
         const controlDisabledAttr = batchProgress.running ? 'disabled' : '';
         const settingsButtonHtml = `
-            <button class="settings-file-btn" title="File Settings" ${controlDisabledAttr} onclick="event.stopPropagation(); openSettings('${file.id}')">
+            <button type="button" class="settings-file-btn" title="File Settings" data-file-id="${file.id}" ${controlDisabledAttr}>
                 <i class="fas fa-cog"></i>
             </button>
         `;
 
         item.innerHTML = `
-            <button class="remove-file-btn" title="Remove File" ${controlDisabledAttr} onclick="event.stopPropagation(); removeFile('${file.id}')">
+            <button type="button" class="remove-file-btn" title="Remove File" data-file-id="${file.id}" ${controlDisabledAttr}>
                 <i class="fas fa-trash"></i>
             </button>
             ${settingsButtonHtml}
@@ -1327,8 +1374,9 @@ const renderPreview = () => {
     const nextPageBtn = document.getElementById('nextPageBtn');
 
     if (!file) {
-        paginationControls.classList.add('hidden');
+        if (paginationControls) paginationControls.classList.add('hidden');
         previewContainer.innerHTML = '<div class="empty-preview"><p>Select a file to preview</p></div>';
+        resetSplitUI();
         return;
     }
 
@@ -1654,12 +1702,6 @@ const updateGlobalButtons = () => {
         processBtn.classList.toggle('disabled', processBtn.disabled);
         if (isProcessing) {
             processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing All...';
-        } else if (allProcessed) {
-            if (hasErrorFiles) {
-                processBtn.innerHTML = '<i class="fas fa-rotate-right"></i> Restart Processing';
-            } else {
-                processBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clear Files';
-            }
         } else if (isConfiguringColumns) {
             processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
         } else if (googleKeyMissing) {
@@ -1667,6 +1709,8 @@ const updateGlobalButtons = () => {
         } else if (openRouterKeyMissing) {
             processBtn.innerHTML = '<i class="fas fa-key"></i> Add OpenRouter API Key';
         } else {
+            // Always show Start OCR Processing, even if all processed 
+            // The user rarely wants to quickly clear all via the primary action button
             processBtn.innerHTML = '<i class="fas fa-play"></i> Start OCR Processing (All)';
         }
     }
@@ -1686,24 +1730,10 @@ const updateGlobalButtons = () => {
 // --- Actions ---
 const handleProcessClick = () => {
     if (batchProgress.running || filesData.length === 0) return;
-    const allProcessed = filesData.every(f => f.status === 'done' || f.status === 'error');
-    const hasErrorFiles = filesData.some(f => f.status === 'error');
-    if (allProcessed) {
-        if (hasErrorFiles) {
-            showAppConfirm(
-                'Some files have errors. Restart OCR processing for all files?',
-                { title: 'Restart Processing', confirmText: 'Restart', cancelText: 'Cancel' }
-            ).then((confirmRestart) => {
-                if (confirmRestart) openReviewModal();
-            });
-        } else {
-            showAppConfirm('Clear all files from the queue?', { title: 'Clear Files', confirmText: 'Clear', danger: true })
-                .then((confirmClear) => {
-                    if (confirmClear) clearAll();
-                });
-        }
-        return;
-    }
+
+    // We no longer intercept with a "Clear all files" dialog prompt.
+    // Clicking Process will simply re-run OCR on the files currently in the queue.
+
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
     if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
         showAppAlert('Please enter your Google Vision API key first.', { title: 'Google Vision API Key' });
