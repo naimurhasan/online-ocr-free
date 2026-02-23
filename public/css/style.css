@@ -754,6 +754,68 @@ button {
     font-size: 0.9rem;
 }
 
+.app-alert-content {
+    max-width: 520px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+.app-alert-message {
+    margin: 0.8rem 0 1.4rem;
+    white-space: pre-wrap;
+    line-height: 1.55;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.app-alert-actions {
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.app-alert-actions .btn-secondary,
+.app-alert-actions .btn-primary {
+    min-width: 140px;
+    width: auto;
+    text-transform: none;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.72rem 1rem;
+    white-space: nowrap;
+}
+
+.app-alert-actions .btn-secondary {
+    border-width: 2px;
+}
+
+.app-alert-danger {
+    background: #991b1b;
+    color: #fff;
+}
+
+.app-alert-danger:hover:not(:disabled) {
+    background: #7f1d1d;
+}
+
+@media (max-width: 600px) {
+    .app-alert-content {
+        max-width: 92%;
+        padding: 1.35rem;
+    }
+
+    .app-alert-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .app-alert-actions .btn-secondary,
+    .app-alert-actions .btn-primary {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
 @keyframes modal-enter {
     from {
         opacity: 0;
@@ -984,6 +1046,70 @@ select,
 .btn-sm {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
+}
+
+/* Export Option Cards */
+.export-option-card {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.2rem;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.export-option-card:hover {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.export-option-card i {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.export-option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.export-option-info strong {
+    font-size: 1.05rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.export-option-info span {
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    font-weight: 400;
+}
+
+.btn-text-only {
+    width: 100%;
+    border: none;
+    padding: 0.8rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--accent-color);
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.btn-text-only:hover {
+    color: var(--text-color);
+    background: var(--hover-bg);
+    border-radius: 8px;
 }
 
 /* Toast Notification */

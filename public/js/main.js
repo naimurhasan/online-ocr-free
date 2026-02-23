@@ -23,6 +23,7 @@ const settingsModal = document.getElementById('settingsModal');
 const settingsModalTitle = document.getElementById('settingsModalTitle');
 const settingsFileName = document.getElementById('settingsFileName');
 const pdfPageSettings = document.getElementById('pdfPageSettings');
+const pdfPageHint = document.getElementById('pdfPageHint');
 const startPageInput = document.getElementById('startPage');
 const endPageInput = document.getElementById('endPage');
 const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
@@ -56,6 +57,11 @@ const exportModal = document.getElementById('exportModal');
 const cancelExportBtn = document.getElementById('cancelExportBtn');
 const exportCombinedBtn = document.getElementById('exportCombinedBtn');
 const exportZipBtn = document.getElementById('exportZipBtn');
+const appAlertModal = document.getElementById('appAlertModal');
+const appAlertTitle = document.getElementById('appAlertTitle');
+const appAlertMessage = document.getElementById('appAlertMessage');
+const appAlertCancelBtn = document.getElementById('appAlertCancelBtn');
+const appAlertConfirmBtn = document.getElementById('appAlertConfirmBtn');
 const overallProgress = document.getElementById('overallProgress');
 const overallProgressText = document.getElementById('overallProgressText');
 const overallEtaText = document.getElementById('overallEtaText');
@@ -70,6 +76,53 @@ let globalColumnsConfigs = {
     splitPositions: [] // percentages [0..1]
 };
 
+const cloneColumnsConfig = (config) => ({
+    active: !!config?.active,
+    numColumns: Math.max(1, parseInt(config?.numColumns || 1, 10)),
+    splitPositions: Array.isArray(config?.splitPositions) ? [...config.splitPositions] : []
+});
+
+const getFileColumnsConfig = (file) => cloneColumnsConfig(file?.columnConfig || {
+    active: false,
+    numColumns: 1,
+    splitPositions: []
+});
+
+const syncColumnsFromFile = (file) => {
+    globalColumnsConfigs = getFileColumnsConfig(file);
+};
+
+const syncColumnsToFile = (file) => {
+    if (!file) return;
+    file.columnConfig = cloneColumnsConfig(globalColumnsConfigs);
+};
+
+const updateColumnsButtonUI = () => {
+    if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
+        confirmSplitBtn.classList.add('hidden');
+        confirmSplitBtn.classList.remove('btn-pulse');
+        selectColumnsBtn.classList.remove('btn-secondary');
+        selectColumnsBtn.classList.add('btn-primary');
+        selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> ${globalColumnsConfigs.numColumns} Cols`;
+        return;
+    }
+
+    if (globalColumnsConfigs.numColumns > 1) {
+        confirmSplitBtn.classList.remove('hidden');
+        confirmSplitBtn.classList.add('btn-pulse');
+        selectColumnsBtn.classList.remove('btn-primary');
+        selectColumnsBtn.classList.add('btn-secondary');
+        selectColumnsBtn.innerHTML = '<i class="fas fa-columns"></i> Columns';
+        return;
+    }
+
+    confirmSplitBtn.classList.add('hidden');
+    confirmSplitBtn.classList.remove('btn-pulse');
+    selectColumnsBtn.classList.remove('btn-primary');
+    selectColumnsBtn.classList.add('btn-secondary');
+    selectColumnsBtn.innerHTML = '<i class="fas fa-columns"></i> Columns';
+};
+
 let batchProgress = {
     running: false,
     totalFiles: 0,
@@ -80,6 +133,7 @@ let batchProgress = {
 };
 
 let progressTimerId = null;
+let appAlertResolver = null;
 
 const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
 const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
@@ -140,6 +194,13 @@ const setupEventListeners = () => {
     cancelExportBtn.addEventListener('click', closeExportModal);
     exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
     exportZipBtn.addEventListener('click', downloadAllZip);
+    appAlertCancelBtn.addEventListener('click', () => resolveAppAlert(false));
+    appAlertConfirmBtn.addEventListener('click', () => resolveAppAlert(true));
+    appAlertModal.addEventListener('click', (e) => {
+        if (e.target === appAlertModal && !appAlertCancelBtn.classList.contains('hidden')) {
+            resolveAppAlert(false);
+        }
+    });
 
     // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -209,21 +270,30 @@ const setupEventListeners = () => {
         });
     });
 
-    confirmSplitBtn.addEventListener('click', () => {
+    confirmSplitBtn.addEventListener('click', async () => {
         // Lock in the global config
         globalColumnsConfigs.active = globalColumnsConfigs.numColumns > 1;
+        const activeFile = filesData.find(f => f.id === activeFileId);
+        syncColumnsToFile(activeFile);
 
-        // Hide split confirm button, show columns set active
-        confirmSplitBtn.classList.add('hidden');
-        confirmSplitBtn.classList.remove('btn-pulse');
-        selectColumnsBtn.classList.remove('btn-secondary');
-        selectColumnsBtn.classList.add('btn-primary');
-        selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> ${globalColumnsConfigs.numColumns} Cols`;
+        if (filesData.length > 1 && globalColumnsConfigs.numColumns > 1) {
+            const applyToRest = await showAppConfirm(
+                'Apply this column split to all uploaded files?\n\nChoose "Cancel" for this file only.',
+                { title: 'Apply Column Split', confirmText: 'Apply to all', cancelText: 'This file only' }
+            );
+            if (applyToRest) {
+                const configToCopy = cloneColumnsConfig(globalColumnsConfigs);
+                filesData.forEach((f) => {
+                    f.columnConfig = cloneColumnsConfig(configToCopy);
+                });
+            }
+        }
 
         // Remove draggable class from splitters to lock them
         const splitters = document.querySelectorAll('.column-splitter');
         splitters.forEach(s => s.style.pointerEvents = 'none');
 
+        updateColumnsButtonUI();
         updateGlobalButtons(); // Un-disable Process Button state
         renderPreview(); // Enforce the transition back to scrollable view
     });
@@ -284,11 +354,62 @@ const saveUserPreferences = () => {
 
 const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KEY);
 
+const resolveAppAlert = (result) => {
+    if (appAlertResolver) {
+        appAlertResolver(result);
+        appAlertResolver = null;
+    }
+    appAlertModal.classList.add('hidden');
+};
+
+const showAppAlert = async (message, options = {}) => {
+    const {
+        title = 'Notice',
+        confirmText = 'OK',
+        danger = false
+    } = options;
+
+    appAlertTitle.textContent = title;
+    appAlertMessage.textContent = message;
+    appAlertCancelBtn.classList.add('hidden');
+    appAlertConfirmBtn.textContent = confirmText;
+    appAlertConfirmBtn.classList.toggle('app-alert-danger', danger);
+    appAlertModal.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+        appAlertResolver = resolve;
+    });
+};
+
+const showAppConfirm = async (message, options = {}) => {
+    const {
+        title = 'Confirm',
+        confirmText = 'Confirm',
+        cancelText = 'Cancel',
+        danger = false
+    } = options;
+
+    appAlertTitle.textContent = title;
+    appAlertMessage.textContent = message;
+    appAlertCancelBtn.textContent = cancelText;
+    appAlertCancelBtn.classList.remove('hidden');
+    appAlertConfirmBtn.textContent = confirmText;
+    appAlertConfirmBtn.classList.toggle('app-alert-danger', danger);
+    appAlertModal.classList.remove('hidden');
+
+    return new Promise((resolve) => {
+        appAlertResolver = resolve;
+    });
+};
+
 const ensureGoogleKeyStorageConsent = async () => {
     const consent = getGoogleStorageConsent();
     if (consent === 'accepted') return true;
 
-    const accepted = window.confirm('Allow this app to use browser cookies/local storage to save your encrypted Google Vision API key on this device?');
+    const accepted = await showAppConfirm(
+        'Allow this app to use browser cookies/local storage to save your encrypted Google Vision API key on this device?',
+        { title: 'Storage Permission', confirmText: 'Allow' }
+    );
     if (accepted) {
         localStorage.setItem(GOOGLE_KEY_CONSENT_KEY, 'accepted');
     } else {
@@ -408,7 +529,7 @@ const processPdfFile = async (file) => {
         }
     } catch (err) {
         console.error("Error processing PDF:", err);
-        alert(`Failed to process PDF: ${file.name}`);
+        showAppAlert(`Failed to process PDF: ${file.name}`, { title: 'Processing Error' });
     }
 };
 */
@@ -427,6 +548,8 @@ const addFileToState = (file, name) => {
         currentPage: 0, // 0-indexed
         startPage: null, // For PDFs
         endPage: null, // For PDFs
+        totalPages: null, // For PDFs
+        columnConfig: { active: false, numColumns: 1, splitPositions: [] }, // Per-file column split config
         rotation: 0, // 0, 90, 180, 270
         activeViewerPage: 1, // For tracking the actual visible page in the custom PDF DOM viewer
         // Use a generic placeholder or the image URL
@@ -446,6 +569,7 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
     try {
         const arrayBuffer = await fileObj.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        fileObj.totalPages = pdf.numPages;
 
         // Ensure requested page exists
         const safePageNum = Math.min(Math.max(1, pageNum), pdf.numPages);
@@ -481,6 +605,9 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
 
 const selectFile = (id) => {
     activeFileId = id;
+    const file = filesData.find(f => f.id === id);
+    syncColumnsFromFile(file);
+    updateColumnsButtonUI();
     resetZoomPan();
     renderFileList(); // Update active class
     renderPreview();
@@ -508,6 +635,8 @@ const clearAll = () => {
     filesData.forEach(revokeFileResources);
     filesData = [];
     activeFileId = null;
+    globalColumnsConfigs = { active: false, numColumns: 1, splitPositions: [] };
+    updateColumnsButtonUI();
     closeReviewModal();
     resetBatchProgressUI();
     renderFileList();
@@ -543,7 +672,17 @@ const removeFile = (id) => {
 let settingsFileId = null;
 let settingsRotation = 0;
 
-const openSettings = (id) => {
+const getPdfTotalPages = async (file) => {
+    if (file.totalPages && file.totalPages > 0) {
+        return file.totalPages;
+    }
+    const arrayBuffer = await file.file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    file.totalPages = pdf.numPages;
+    return file.totalPages;
+};
+
+const openSettings = async (id) => {
     if (batchProgress.running) return;
     const file = filesData.find(f => f.id === id);
     if (!file) return;
@@ -552,8 +691,37 @@ const openSettings = (id) => {
     settingsFileName.textContent = file.name;
     settingsModalTitle.textContent = file.type === 'pdf' ? 'PDF Settings' : 'Image Settings';
     pdfPageSettings.classList.toggle('hidden', file.type !== 'pdf');
-    startPageInput.value = file.startPage || '';
-    endPageInput.value = file.endPage || '';
+    startPageInput.value = '';
+    endPageInput.value = '';
+    startPageInput.removeAttribute('max');
+    endPageInput.removeAttribute('max');
+    startPageInput.min = '1';
+    endPageInput.min = '1';
+
+    if (file.type === 'pdf') {
+        try {
+            const totalPages = await getPdfTotalPages(file);
+            startPageInput.max = String(totalPages);
+            endPageInput.max = String(totalPages);
+            startPageInput.placeholder = `Leave empty (default 1, max ${totalPages})`;
+            endPageInput.placeholder = `Leave empty (default ${totalPages})`;
+            startPageInput.value = file.startPage ? String(file.startPage) : '';
+            endPageInput.value = file.endPage ? String(file.endPage) : '';
+            if (pdfPageHint) {
+                pdfPageHint.textContent = `Total pages: ${totalPages}. Leave empty for full range (1-${totalPages}).`;
+            }
+        } catch (err) {
+            console.error('Failed to load PDF page count:', err);
+            startPageInput.placeholder = 'Leave empty (default 1)';
+            endPageInput.placeholder = 'Leave empty (default max page)';
+            startPageInput.value = file.startPage ? String(file.startPage) : '';
+            endPageInput.value = file.endPage ? String(file.endPage) : '';
+            if (pdfPageHint) {
+                pdfPageHint.textContent = 'Leave both empty to process full PDF.';
+            }
+        }
+    }
+
     setSettingsRotation(file.rotation || 0);
 
     settingsModal.classList.remove('hidden');
@@ -578,28 +746,94 @@ const setSettingsRotation = (rotation) => {
     });
 };
 
-const applyRotationToFile = (file, rotation) => {
+const applyRotationToFile = (file, rotation, showResetToast = true) => {
     const previousRotation = file.rotation || 0;
     const nextRotation = [0, 90, 180, 270].includes(rotation) ? rotation : 0;
     if (previousRotation === nextRotation) return;
 
     file.rotation = nextRotation;
 
-    if (globalColumnsConfigs.numColumns > 1 || globalColumnsConfigs.active) {
-        setupColumns(1);
-        showToast('Columns reset after rotation. Set columns again if needed.');
+    const config = getFileColumnsConfig(file);
+    if (config.numColumns > 1 || config.active) {
+        file.columnConfig = { active: false, numColumns: 1, splitPositions: [] };
+        if (file.id === activeFileId) {
+            syncColumnsFromFile(file);
+            updateColumnsButtonUI();
+            renderPreview();
+            updateGlobalButtons();
+        }
+        if (showResetToast) {
+            showToast('Columns reset after rotation. Set columns again if needed.');
+        }
     }
 };
 
-const saveSettings = () => {
+const applyPageSelectionToPdf = async (pdfFile, selectedStart, selectedEnd) => {
+    if (selectedStart === null) {
+        pdfFile.startPage = null;
+    } else {
+        pdfFile.startPage = selectedStart;
+    }
+
+    if (selectedEnd === null) {
+        pdfFile.endPage = null;
+        return;
+    }
+
+    const totalPages = await getPdfTotalPages(pdfFile);
+    if (totalPages >= selectedEnd) {
+        pdfFile.endPage = selectedEnd;
+    }
+    // If total pages are smaller than selectedEnd, keep existing endPage as-is.
+};
+
+const saveSettings = async () => {
     if (!settingsFileId) return;
     const file = filesData.find(f => f.id === settingsFileId);
     if (file) {
+        const prevRotation = file.rotation || 0;
+        const prevStartPage = file.startPage;
+        const prevEndPage = file.endPage;
+
         if (file.type === 'pdf') {
-            file.startPage = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
-            file.endPage = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
+            const selectedStart = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
+            const selectedEnd = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
+            await applyPageSelectionToPdf(file, selectedStart, selectedEnd);
+
+            const totalPdfFiles = filesData.filter((f) => f.type === 'pdf').length;
+            const pageSelectionChanged = prevStartPage !== file.startPage || prevEndPage !== file.endPage;
+            if (totalPdfFiles > 1 && pageSelectionChanged) {
+                const applyToRestPages = await showAppConfirm(
+                    'Apply this page selection to other uploaded PDFs?\n\nRule:\n- Start applies to all (or clears if empty)\n- Empty End clears all\n- End 10 applies only where total pages >= 10, otherwise each PDF keeps its current end value.',
+                    { title: 'Apply Page Selection', confirmText: 'Apply to all PDFs', cancelText: 'This PDF only' }
+                );
+
+                if (applyToRestPages) {
+                    for (const pdfFile of filesData) {
+                        if (pdfFile.type !== 'pdf' || pdfFile.id === file.id) continue;
+                        await applyPageSelectionToPdf(pdfFile, selectedStart, selectedEnd);
+                    }
+                }
+            }
         }
+
         applyRotationToFile(file, settingsRotation);
+        const rotationChanged = prevRotation !== (file.rotation || 0);
+        if (rotationChanged && filesData.length > 1) {
+            const applyRotationToRest = await showAppConfirm(
+                'Apply this rotation to other uploaded files?',
+                { title: 'Apply Rotation', confirmText: 'Apply to all', cancelText: 'This file only' }
+            );
+
+            if (applyRotationToRest) {
+                for (const target of filesData) {
+                    if (target.id === file.id) continue;
+                    applyRotationToFile(target, settingsRotation, false);
+                }
+                showToast('Rotation applied to all files.');
+            }
+        }
+
         renderPreview();
         renderResult();
     }
@@ -762,6 +996,11 @@ const renderPreview = () => {
                 && (globalColumnsConfigs.numColumns === 1 || globalColumnsConfigs.active);
 
             if (showCustomViewer) {
+                paginationControls.classList.remove('hidden');
+                pageIndicator.textContent = `Page ${file.activeViewerPage || 1} of ...`;
+                prevPageBtn.disabled = true;
+                nextPageBtn.disabled = true;
+
                 // Render our custom scrolling PDF.js viewer instead of a native <object> tag
                 previewContainer.innerHTML = '<div class="pdf-custom-viewer" id="customPdfViewer"></div>';
                 const customViewer = document.getElementById('customPdfViewer');
@@ -770,6 +1009,11 @@ const renderPreview = () => {
                 file.file.arrayBuffer().then(arrayBuffer => {
                     return pdfjsLib.getDocument(arrayBuffer).promise;
                 }).then(pdf => {
+                    const totalPages = pdf.numPages;
+                    const safeActivePage = Math.min(Math.max(file.activeViewerPage || 1, 1), totalPages);
+                    file.activeViewerPage = safeActivePage;
+                    pageIndicator.textContent = `Page ${safeActivePage} of ${totalPages}`;
+
                     // Create an intersection observer to detect active page and trigger rendering
                     const observer = new IntersectionObserver((entries) => {
                         let mostVisiblePage = file.activeViewerPage;
@@ -807,6 +1051,7 @@ const renderPreview = () => {
 
                         if (maxRatio > 0 && mostVisiblePage !== file.activeViewerPage) {
                             file.activeViewerPage = mostVisiblePage;
+                            pageIndicator.textContent = `Page ${mostVisiblePage} of ${totalPages}`;
                         }
                     }, {
                         root: customViewer,
@@ -911,10 +1156,6 @@ const setupColumns = (cols) => {
     if (cols === 1) {
         globalColumnsConfigs.active = false;
         globalColumnsConfigs.splitPositions = [];
-        confirmSplitBtn.classList.add('hidden');
-        selectColumnsBtn.classList.remove('btn-primary');
-        selectColumnsBtn.classList.add('btn-secondary');
-        selectColumnsBtn.innerHTML = `<i class="fas fa-columns"></i> Columns`;
     } else {
         globalColumnsConfigs.active = false; // Not confirmed yet
         globalColumnsConfigs.splitPositions = [];
@@ -922,9 +1163,11 @@ const setupColumns = (cols) => {
         for (let i = 1; i < cols; i++) {
             globalColumnsConfigs.splitPositions.push(i / cols);
         }
-        confirmSplitBtn.classList.remove('hidden');
-        confirmSplitBtn.classList.add('btn-pulse');
     }
+
+    const activeFile = filesData.find(f => f.id === activeFileId);
+    syncColumnsToFile(activeFile);
+    updateColumnsButtonUI();
 
     // Render preview to show/hide splitters
     renderPreview();
@@ -962,6 +1205,8 @@ const setupSplitterDrag = (splitter, container) => {
         percentage = Math.max(minPos, Math.min(maxPos, percentage));
 
         globalColumnsConfigs.splitPositions[index] = percentage;
+        const activeFile = filesData.find(f => f.id === activeFileId);
+        syncColumnsToFile(activeFile);
         splitter.style.left = `${percentage * 100}%`;
     });
 
@@ -1046,13 +1291,15 @@ const handleProcessClick = () => {
     if (batchProgress.running || filesData.length === 0) return;
     const allProcessed = filesData.every(f => f.status === 'done' || f.status === 'error');
     if (allProcessed) {
-        const confirmClear = confirm('Clear all files from the queue?');
-        if (confirmClear) clearAll();
+        showAppConfirm('Clear all files from the queue?', { title: 'Clear Files', confirmText: 'Clear', danger: true })
+            .then((confirmClear) => {
+                if (confirmClear) clearAll();
+            });
         return;
     }
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
     if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
-        alert('Please enter your Google Vision API key first.');
+        showAppAlert('Please enter your Google Vision API key first.', { title: 'Google Vision API Key' });
         return;
     }
     openReviewModal();
@@ -1237,11 +1484,12 @@ const processSingleImage = async (file) => {
     try {
         const sourceBlob = file.file;
         const workingBlob = await rotateImageBlob(sourceBlob, file.rotation || 0);
+        const fileColumns = getFileColumnsConfig(file);
 
-        if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
+        if (fileColumns.active && fileColumns.numColumns > 1) {
             // Process columns sequentially
             const textParts = [];
-            const splits = [0, ...globalColumnsConfigs.splitPositions, 1];
+            const splits = [0, ...fileColumns.splitPositions, 1];
 
             for (let i = 0; i < splits.length - 1; i++) {
                 const startPct = splits[i];
@@ -1295,6 +1543,8 @@ const processPdfDocument = async (file) => {
     try {
         const arrayBuffer = await file.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        file.totalPages = pdf.numPages;
+        const fileColumns = getFileColumnsConfig(file);
         file.pages.forEach(page => {
             if (page.imgUrl) URL.revokeObjectURL(page.imgUrl);
         });
@@ -1344,9 +1594,9 @@ const processPdfDocument = async (file) => {
 
             // 3. Send to OCR (handling columns if active)
             try {
-                if (globalColumnsConfigs.active && globalColumnsConfigs.numColumns > 1) {
+                if (fileColumns.active && fileColumns.numColumns > 1) {
                     const textParts = [];
-                    const splits = [0, ...globalColumnsConfigs.splitPositions, 1];
+                    const splits = [0, ...fileColumns.splitPositions, 1];
 
                     for (let c = 0; c < splits.length - 1; c++) {
                         const startPct = splits[c];
@@ -1394,7 +1644,7 @@ const processPdfDocument = async (file) => {
     } catch (err) {
         console.error("PDF Processing Error:", err);
         file.status = 'error';
-        alert(`Failed to process PDF: ${err.message || err}`);
+        await showAppAlert(`Failed to process PDF: ${err.message || err}`, { title: 'Processing Error' });
     }
 
     renderFileList();
@@ -1487,11 +1737,11 @@ const downloadAllZip = async () => {
             a.click();
             URL.revokeObjectURL(url);
         } else {
-            alert('Failed to generate zip');
+            await showAppAlert('Failed to generate zip', { title: 'Export Error' });
         }
     } catch (err) {
         console.error(err);
-        alert('Download failed');
+        await showAppAlert('Download failed', { title: 'Export Error' });
     } finally {
         downloadAllBtn.innerHTML = '<i class="fas fa-file-export"></i> Export';
     }

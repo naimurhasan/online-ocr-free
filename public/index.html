@@ -27,10 +27,55 @@
             <div class="global-actions">
                 <div id="languageWrap" class="language-select">
                     <select id="language">
-                        <!-- Bangla is usually best for mixed content too if trained well, but let's keep options -->
-                        <option value="ben" selected>Bangla</option>
-                        <option value="eng+ben">Bangla + English</option>
-                        <option value="eng">English</option>
+                        <!-- Tesseract languages (require matching .traineddata in ./tessdata for local OCR) -->
+                        <option value="eng" selected>🇬🇧 English</option>
+                        <option value="ben">🇧🇩 Bangla</option>
+                        <option value="eng+ben">🇧🇩🇬🇧 Bangla+English</option>
+                        <option value="afr">🇿🇦 Afrikaans</option>
+                        <option value="sqi">🇦🇱 Albanian</option>
+                        <option value="eus">🇪🇸 Basque</option>
+                        <option value="por">🇧🇷 Brazilian</option>
+                        <option value="bul">🇧🇬 Bulgarian</option>
+                        <option value="bel">🇧🇾 Byelorussian</option>
+                        <option value="cat">🇪🇸 Catalan</option>
+                        <option value="chi_sim">🇨🇳 Chinese Simplified</option>
+                        <option value="chi_tra">🇹🇼 Chinese Traditional</option>
+                        <option value="hrv">🇭🇷 Croatian</option>
+                        <option value="ces">🇨🇿 Czech</option>
+                        <option value="dan">🇩🇰 Danish</option>
+                        <option value="nld">🇳🇱 Dutch</option>
+                        <option value="epo">🌐 Esperanto</option>
+                        <option value="est">🇪🇪 Estonian</option>
+                        <option value="fin">🇫🇮 Finnish</option>
+                        <option value="fra">🇫🇷 French</option>
+                        <option value="glg">🇪🇸 Galician</option>
+                        <option value="deu">🇩🇪 German</option>
+                        <option value="ell">🇬🇷 Greek</option>
+                        <option value="hun">🇭🇺 Hungarian</option>
+                        <option value="isl">🇮🇸 Icelandic</option>
+                        <option value="ind">🇮🇩 Indonesian</option>
+                        <option value="ita">🇮🇹 Italian</option>
+                        <option value="jpn">🇯🇵 Japanese</option>
+                        <option value="kor">🇰🇷 Korean</option>
+                        <option value="lat">🏛️ Latin</option>
+                        <option value="lav">🇱🇻 Latvian</option>
+                        <option value="lit">🇱🇹 Lithuanian</option>
+                        <option value="mkd">🇲🇰 Macedonian</option>
+                        <option value="msa">🇲🇾 Malay</option>
+                        <option value="ron">🇲🇩 Moldavian</option>
+                        <option value="nor">🇳🇴 Norwegian</option>
+                        <option value="pol">🇵🇱 Polish</option>
+                        <option value="por">🇵🇹 Portuguese</option>
+                        <option value="ron">🇷🇴 Romanian</option>
+                        <option value="rus">🇷🇺 Russian</option>
+                        <option value="srp">🇷🇸 Serbian</option>
+                        <option value="slk">🇸🇰 Slovak</option>
+                        <option value="slv">🇸🇮 Slovenian</option>
+                        <option value="spa">🇪🇸 Spanish</option>
+                        <option value="swe">🇸🇪 Swedish</option>
+                        <option value="tgl">🇵🇭 Tagalog</option>
+                        <option value="tur">🇹🇷 Turkish</option>
+                        <option value="ukr">🇺🇦 Ukrainian</option>
                     </select>
                 </div>
                 <div class="language-select">
@@ -153,12 +198,13 @@
             <div class="settings-form" id="pdfPageSettings">
                 <div class="form-group">
                     <label for="startPage">Start Page (optional):</label>
-                    <input type="number" id="startPage" min="1" placeholder="e.g. 1">
+                    <input type="number" id="startPage" min="1" placeholder="Leave empty (default 1)">
                 </div>
                 <div class="form-group">
                     <label for="endPage">End Page (optional):</label>
-                    <input type="number" id="endPage" min="1" placeholder="e.g. 5">
+                    <input type="number" id="endPage" min="1" placeholder="Leave empty (default max page)">
                 </div>
+                <p id="pdfPageHint" class="settings-file-name" style="margin: -0.4rem 0 0;">Leave both empty to process full PDF.</p>
             </div>
             <div class="modal-actions">
                 <button id="cancelSettingsBtn" class="btn-secondary">Cancel</button>
@@ -220,13 +266,42 @@
 
     <!-- Export Choice Modal -->
     <div id="exportModal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Export OCR Results</h3>
-            <p class="settings-file-name">Choose export format for processed files.</p>
-            <div class="modal-actions" style="margin-top: 1.5rem;">
-                <button id="cancelExportBtn" class="btn-secondary">Cancel</button>
-                <button id="exportCombinedBtn" class="btn-secondary">Combined .txt</button>
-                <button id="exportZipBtn" class="btn-primary">Separate files (.zip)</button>
+        <div class="modal-content" style="max-width: 450px;">
+            <h3 style="text-align: center; margin-bottom: 0.5rem;">Export OCR Results</h3>
+            <p class="settings-file-name" style="text-align: center; margin-bottom: 2rem;">Choose export format for
+                processed files.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <button id="exportCombinedBtn" class="export-option-card">
+                    <i class="fas fa-file-alt"></i>
+                    <div class="export-option-info">
+                        <strong>Combined Text File</strong>
+                        <span>All text merged into a single .txt file</span>
+                    </div>
+                </button>
+
+                <button id="exportZipBtn" class="export-option-card">
+                    <i class="fas fa-file-archive"></i>
+                    <div class="export-option-info">
+                        <strong>Separate Files (.ZIP)</strong>
+                        <span>Individual .txt files zipped into an archive</span>
+                    </div>
+                </button>
+            </div>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <button id="cancelExportBtn" class="btn-text-only">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- App Alert Modal -->
+    <div id="appAlertModal" class="modal hidden">
+        <div class="modal-content app-alert-content">
+            <h3 id="appAlertTitle">Notice</h3>
+            <p id="appAlertMessage" class="settings-file-name app-alert-message"></p>
+            <div class="modal-actions app-alert-actions">
+                <button id="appAlertCancelBtn" class="btn-secondary hidden">Cancel</button>
+                <button id="appAlertConfirmBtn" class="btn-primary">OK</button>
             </div>
         </div>
     </div>

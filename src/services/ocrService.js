@@ -17,7 +17,12 @@ const LANGUAGE_HINTS_MAP = {
     ben: 'bn',
     eng: 'en',
     hin: 'hi',
-    ara: 'ar'
+    ara: 'ar',
+    urd: 'ur',
+    tam: 'ta',
+    tel: 'te',
+    mar: 'mr',
+    nep: 'ne'
 };
 
 const getGoogleLanguageHints = (lang = 'ben') => {
@@ -67,6 +72,29 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     }
 
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
+};
+
+const validateTesseractLanguages = async (lang = 'ben') => {
+    const requested = [...new Set(
+        lang
+            .split('+')
+            .map(code => code.trim().toLowerCase())
+            .filter(Boolean)
+    )];
+
+    const missing = [];
+    for (const code of requested) {
+        const traineddataPath = path.resolve('./tessdata', `${code}.traineddata`);
+        try {
+            await fs.access(traineddataPath);
+        } catch {
+            missing.push(`${code}.traineddata`);
+        }
+    }
+
+    if (missing.length > 0) {
+        throw new Error(`Missing Tesseract language data: ${missing.join(', ')}. Add them in ./tessdata or switch OCR engine to Google Vision API.`);
+    }
 };
 
 const ensureTempFolder = async () => {
@@ -152,6 +180,10 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     const googleApiKey = options.googleApiKey || '';
     const useGoogleVision = engine === 'google-vision';
     let textResult = '';
+
+    if (!useGoogleVision) {
+        await validateTesseractLanguages(lang);
+    }
 
     if (mimetype === 'application/pdf') {
         const imageFiles = await convertPdfToImages(filePath);
