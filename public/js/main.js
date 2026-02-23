@@ -47,6 +47,8 @@ const googleVisionKeyWrap = document.getElementById('googleVisionKeyWrap');
 const googleVisionApiKeyInput = document.getElementById('googleVisionApiKey');
 const openRouterKeyWrap = document.getElementById('openRouterKeyWrap');
 const openRouterApiKeyInput = document.getElementById('openRouterApiKey');
+const openRouterFormatWrap = document.getElementById('openRouterFormatWrap');
+const openRouterOutputFormatSelect = document.getElementById('openRouterOutputFormat');
 const fileCountSpan = document.getElementById('fileCount');
 const reviewModal = document.getElementById('reviewModal');
 const cancelReviewBtn = document.getElementById('cancelReviewBtn');
@@ -220,6 +222,7 @@ const setupEventListeners = () => {
         updateEngineUI();
         updateGlobalButtons();
     });
+    openRouterOutputFormatSelect.addEventListener('change', saveUserPreferences);
     googleVisionApiKeyInput.addEventListener('input', async () => {
         await persistGoogleKeyIfAllowed();
         updateGlobalButtons();
@@ -345,9 +348,10 @@ const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim(
 const getOpenRouterApiKey = () => (openRouterApiKeyInput?.value || '').trim();
 
 const updateEngineUI = () => {
-    if (!googleVisionKeyWrap || !openRouterKeyWrap) return;
+    if (!googleVisionKeyWrap || !openRouterKeyWrap || !openRouterFormatWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
     openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterGemmaSelected());
+    openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterGemmaSelected());
 };
 
 const appendOcrConfigToFormData = (formData) => {
@@ -358,13 +362,15 @@ const appendOcrConfigToFormData = (formData) => {
     }
     if (isOpenRouterGemmaSelected()) {
         formData.append('openRouterApiKey', getOpenRouterApiKey());
+        formData.append('openRouterOutputFormat', openRouterOutputFormatSelect.value || 'plain');
     }
 };
 
 const saveUserPreferences = () => {
     const prefs = {
         language: languageSelect.value,
-        engine: ocrEngineSelect.value
+        engine: ocrEngineSelect.value,
+        openRouterOutputFormat: openRouterOutputFormatSelect.value || 'plain'
     };
     localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
 };
@@ -518,6 +524,7 @@ const loadUserPreferences = async () => {
             const prefs = JSON.parse(prefsRaw);
             if (prefs.language) languageSelect.value = prefs.language;
             if (prefs.engine) ocrEngineSelect.value = prefs.engine;
+            if (prefs.openRouterOutputFormat) openRouterOutputFormatSelect.value = prefs.openRouterOutputFormat;
         }
     } catch (err) {
         console.warn('Failed to load preferences:', err);
@@ -1363,6 +1370,7 @@ const updateGlobalButtons = () => {
     if (selectColumnsBtn) selectColumnsBtn.disabled = !hasFiles || isProcessing;
     if (languageSelect) languageSelect.disabled = isProcessing;
     if (ocrEngineSelect) ocrEngineSelect.disabled = isProcessing;
+    if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.disabled = isProcessing || !isOpenRouterGemmaSelected();
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.disabled = isProcessing || !isGoogleVisionSelected();
     if (openRouterApiKeyInput) openRouterApiKeyInput.disabled = isProcessing || !isOpenRouterGemmaSelected();
 };

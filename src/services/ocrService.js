@@ -97,7 +97,7 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
 };
 
-const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRouterApiKey) => {
+const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain') => {
     const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     if (!resolvedKey) {
         throw new Error('OpenRouter API key is required');
@@ -113,6 +113,10 @@ const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRou
     const imageBuffer = await fs.readFile(imagePath);
     const imageDataUrl = `data:${safeMimeType};base64,${imageBuffer.toString('base64')}`;
     const languageHint = getLanguageLabelForPrompt(lang);
+    const format = outputFormat === 'markdown' ? 'markdown' : 'plain';
+    const formatInstruction = format === 'markdown'
+        ? 'Return valid Markdown only. Preserve structure using headings, lists, tables, and code blocks when present. Do not add commentary.'
+        : 'Return plain text only. Preserve line breaks and reading order. Do not add commentary.';
 
     const response = await fetch(OPENROUTER_ENDPOINT, {
         method: 'POST',
@@ -130,7 +134,7 @@ const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRou
                     content: [
                         {
                             type: 'text',
-                            text: `You are an OCR engine. Extract all readable text from this image.\nRules:\n- Return plain text only.\n- Preserve line breaks and reading order.\n- Do not add commentary or explanations.\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`
+                            text: `You are an OCR engine. Extract all readable text from this image.\nRules:\n- ${formatInstruction}\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`
                         },
                         {
                             type: 'image_url',
@@ -267,6 +271,7 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     const engine = options.engine || 'tesseract';
     const googleApiKey = options.googleApiKey || '';
     const openRouterApiKey = options.openRouterApiKey || '';
+    const openRouterOutputFormat = options.openRouterOutputFormat || 'plain';
     const useTesseract = engine === 'tesseract';
     const useGoogleVision = engine === 'google-vision';
     const useGemmaOpenRouter = engine === 'gemma-openrouter';
@@ -289,7 +294,7 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
                 text = await extractTextWithGoogleVision(image, lang, googleApiKey);
             } else if (useGemmaOpenRouter) {
                 console.log('🔍 Running OCR with OpenRouter Gemma...');
-                text = await extractTextWithOpenRouterGemma(image, 'image/png', lang, openRouterApiKey);
+                text = await extractTextWithOpenRouterGemma(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat);
             } else {
                 const processedImage = saveSteps
                     ? await preprocessImageWithSteps(image, `page${i + 1}`)
@@ -321,7 +326,7 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
             textResult = await extractTextWithGoogleVision(filePath, lang, googleApiKey);
         } else if (useGemmaOpenRouter) {
             console.log('🔍 Running OCR with OpenRouter Gemma...');
-            textResult = await extractTextWithOpenRouterGemma(filePath, mimetype, lang, openRouterApiKey);
+            textResult = await extractTextWithOpenRouterGemma(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat);
         } else {
             const processedImage = saveSteps
                 ? await preprocessImageWithSteps(filePath, 'single')

@@ -13,6 +13,7 @@ exports.processFile = async (req, res) => {
         const engine = req.body.engine || 'tesseract';
         const googleApiKey = (req.body.googleApiKey || '').trim();
         const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+        const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
 
         if (engine === 'gemma-openrouter' && !openRouterApiKey) {
             if (req.file) deleteFile(req.file.path);
@@ -24,7 +25,8 @@ exports.processFile = async (req, res) => {
         const textResult = await extractText(filePath, mimetype, lang, true, {
             engine,
             googleApiKey,
-            openRouterApiKey
+            openRouterApiKey,
+            openRouterOutputFormat
         });
 
         deleteFile(filePath);
@@ -46,6 +48,7 @@ exports.processBatch = async (req, res) => {
     const engine = req.body.engine || 'tesseract';
     const googleApiKey = (req.body.googleApiKey || '').trim();
     const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+    const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
     const files = req.files;
 
     // Immediate response
@@ -55,7 +58,8 @@ exports.processBatch = async (req, res) => {
     processBatchFiles(files, lang || 'eng+ben', email, {
         engine,
         googleApiKey,
-        openRouterApiKey
+        openRouterApiKey,
+        openRouterOutputFormat
     });
 };
 
