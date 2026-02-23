@@ -13,7 +13,12 @@ const TESSERACT_OPTS = {
 
 const GOOGLE_VISION_ENDPOINT = 'https://vision.googleapis.com/v1/images:annotate';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_GEMMA_MODEL = 'google/gemma-3-27b-it:free';
+const OPENROUTER_MODELS = {
+    'gemma-openrouter-free': 'google/gemma-3-27b-it:free',
+    'gemma-openrouter-paid': 'google/gemma-3-27b-it',
+    'mistral-openrouter-free': 'mistralai/mistral-small-3.1-24b-instruct:free',
+    'mistral-openrouter-paid': 'mistralai/mistral-small-3.1-24b-instruct'
+};
 
 const LANGUAGE_HINTS_MAP = {
     ben: 'bn',
@@ -97,7 +102,7 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
 };
 
-const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain') => {
+const extractTextWithOpenRouter = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain', engineCode, customModel = '') => {
     const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     if (!resolvedKey) {
         throw new Error('OpenRouter API key is required');
@@ -127,7 +132,7 @@ const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRou
             'X-Title': process.env.OPENROUTER_APP_TITLE || 'OCR Magic'
         },
         body: JSON.stringify({
-            model: OPENROUTER_GEMMA_MODEL,
+            model: engineCode === 'openrouter-custom' && customModel ? customModel : (OPENROUTER_MODELS[engineCode] || OPENROUTER_MODELS['gemma-openrouter-free']),
             messages: [
                 {
                     role: 'user',
@@ -272,9 +277,10 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     const googleApiKey = options.googleApiKey || '';
     const openRouterApiKey = options.openRouterApiKey || '';
     const openRouterOutputFormat = options.openRouterOutputFormat || 'plain';
+    const openRouterCustomModel = options.openRouterCustomModel || '';
     const useTesseract = engine === 'tesseract';
     const useGoogleVision = engine === 'google-vision';
-    const useGemmaOpenRouter = engine === 'gemma-openrouter';
+    const useOpenRouter = Object.keys(OPENROUTER_MODELS).includes(engine) || engine === 'openrouter-custom';
     let textResult = '';
 
     if (useTesseract) {
@@ -292,9 +298,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
             if (useGoogleVision) {
                 console.log('🔍 Running OCR with Google Vision API...');
                 text = await extractTextWithGoogleVision(image, lang, googleApiKey);
-            } else if (useGemmaOpenRouter) {
-                console.log('🔍 Running OCR with OpenRouter Gemma...');
-                text = await extractTextWithOpenRouterGemma(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat);
+            } else if (useOpenRouter) {
+                console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
+                text = await extractTextWithOpenRouter(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel);
             } else {
                 const processedImage = saveSteps
                     ? await preprocessImageWithSteps(image, `page${i + 1}`)
@@ -324,9 +330,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
         if (useGoogleVision) {
             console.log('🔍 Running OCR with Google Vision API...');
             textResult = await extractTextWithGoogleVision(filePath, lang, googleApiKey);
-        } else if (useGemmaOpenRouter) {
-            console.log('🔍 Running OCR with OpenRouter Gemma...');
-            textResult = await extractTextWithOpenRouterGemma(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat);
+        } else if (useOpenRouter) {
+            console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
+            textResult = await extractTextWithOpenRouter(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel);
         } else {
             const processedImage = saveSteps
                 ? await preprocessImageWithSteps(filePath, 'single')

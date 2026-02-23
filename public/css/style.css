@@ -78,7 +78,7 @@ body {
 
 .global-actions {
     display: flex;
-    gap: 1rem;
+    gap: 0.55rem;
     align-items: center;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -446,13 +446,46 @@ select {
     cursor: pointer;
 }
 
+.engine-key-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
 .engine-key-wrap input {
-    padding: 0.5rem 0.7rem;
+    padding: 0.45rem 2.2rem 0.45rem 0.6rem;
     border-radius: 6px;
     border: 1px solid var(--border-color);
     background: var(--bg-color);
     color: var(--text-color);
-    min-width: 220px;
+    min-width: 170px;
+    width: 180px;
+    font-size: 0.82rem;
+}
+
+#openRouterCustomModel {
+    padding-right: 0.6rem;
+}
+
+.btn-toggle-visibility {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.btn-toggle-visibility:hover {
+    color: var(--text-color);
 }
 
 .engine-key-wrap input::placeholder {
@@ -821,6 +854,7 @@ button {
         opacity: 0;
         transform: translateY(8px) scale(0.98);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -832,6 +866,13 @@ select,
 .btn-secondary,
 .btn-action {
     height: 38px;
+}
+
+.global-actions .language-select select {
+    max-width: 190px;
+    width: 150px;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.55rem;
 }
 
 .btn-primary {
@@ -1067,7 +1108,7 @@ select,
     border-color: var(--primary-color);
     background: var(--hover-bg);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .export-option-card i {

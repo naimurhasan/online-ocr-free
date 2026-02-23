@@ -49,6 +49,8 @@ const openRouterKeyWrap = document.getElementById('openRouterKeyWrap');
 const openRouterApiKeyInput = document.getElementById('openRouterApiKey');
 const openRouterFormatWrap = document.getElementById('openRouterFormatWrap');
 const openRouterOutputFormatSelect = document.getElementById('openRouterOutputFormat');
+const openRouterCustomModelWrap = document.getElementById('openRouterCustomModelWrap');
+const openRouterCustomModelInput = document.getElementById('openRouterCustomModel');
 const fileCountSpan = document.getElementById('fileCount');
 const reviewModal = document.getElementById('reviewModal');
 const cancelReviewBtn = document.getElementById('cancelReviewBtn');
@@ -156,7 +158,9 @@ const init = async () => {
 
 const setupEventListeners = () => {
     // File adding
-    addFilesBtn.addEventListener('click', () => fileInput.click());
+    if (addFilesBtn) {
+        addFilesBtn.addEventListener('click', () => fileInput.click());
+    }
     fileInput.addEventListener('change', handleFileSelect);
 
     // Drag & Drop
@@ -215,7 +219,7 @@ const setupEventListeners = () => {
         if (isGoogleVisionSelected()) {
             await ensureGoogleKeyStorageConsent();
         }
-        if (isOpenRouterGemmaSelected()) {
+        if (isOpenRouterSelected()) {
             await ensureOpenRouterKeyStorageConsent();
         }
         saveUserPreferences();
@@ -230,6 +234,32 @@ const setupEventListeners = () => {
     openRouterApiKeyInput.addEventListener('input', async () => {
         await persistOpenRouterKeyIfAllowed();
         updateGlobalButtons();
+    });
+    if (openRouterCustomModelInput) {
+        openRouterCustomModelInput.addEventListener('input', () => {
+            saveUserPreferences();
+            updateGlobalButtons();
+        });
+    }
+
+    // API Key visibility toggle
+    document.querySelectorAll('.btn-toggle-visibility').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const targetInput = document.getElementById(targetId);
+            const icon = btn.querySelector('i');
+            if (targetInput) {
+                if (targetInput.type === 'password') {
+                    targetInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    targetInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            }
+        });
     });
 
     // Pagination
@@ -309,7 +339,7 @@ const setupEventListeners = () => {
 
         updateColumnsButtonUI();
         updateGlobalButtons(); // Un-disable Process Button state
-        renderPreview(); // Enforce the transition back to scrollable view
+        recenterPreviewView(); // Enforce the transition back to centered scrollable view
     });
 
     // Zoom/Pan on preview container
@@ -342,7 +372,14 @@ const updateThemeIcon = (isDark) => {
 };
 
 const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'google-vision';
-const isOpenRouterGemmaSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemma-openrouter';
+const isOpenRouterSelected = () => ocrEngineSelect && (
+    ocrEngineSelect.value === 'gemma-openrouter-free' ||
+    ocrEngineSelect.value === 'gemma-openrouter-paid' ||
+    ocrEngineSelect.value === 'mistral-openrouter-free' ||
+    ocrEngineSelect.value === 'mistral-openrouter-paid' ||
+    ocrEngineSelect.value === 'openrouter-custom'
+);
+const isOpenRouterCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'openrouter-custom';
 
 const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim();
 const getOpenRouterApiKey = () => (openRouterApiKeyInput?.value || '').trim();
@@ -350,8 +387,11 @@ const getOpenRouterApiKey = () => (openRouterApiKeyInput?.value || '').trim();
 const updateEngineUI = () => {
     if (!googleVisionKeyWrap || !openRouterKeyWrap || !openRouterFormatWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
-    openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterGemmaSelected());
-    openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterGemmaSelected());
+    openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterSelected());
+    openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterSelected());
+    if (openRouterCustomModelWrap) {
+        openRouterCustomModelWrap.classList.toggle('hidden', !isOpenRouterCustomSelected());
+    }
 };
 
 const appendOcrConfigToFormData = (formData) => {
@@ -360,9 +400,12 @@ const appendOcrConfigToFormData = (formData) => {
     if (isGoogleVisionSelected()) {
         formData.append('googleApiKey', getGoogleVisionApiKey());
     }
-    if (isOpenRouterGemmaSelected()) {
+    if (isOpenRouterSelected()) {
         formData.append('openRouterApiKey', getOpenRouterApiKey());
-        formData.append('openRouterOutputFormat', openRouterOutputFormatSelect.value || 'plain');
+        formData.append('openRouterOutputFormat', openRouterOutputFormatSelect?.value || 'plain');
+        if (isOpenRouterCustomSelected() && openRouterCustomModelInput) {
+            formData.append('openRouterCustomModel', openRouterCustomModelInput.value.trim());
+        }
     }
 };
 
@@ -370,7 +413,8 @@ const saveUserPreferences = () => {
     const prefs = {
         language: languageSelect.value,
         engine: ocrEngineSelect.value,
-        openRouterOutputFormat: openRouterOutputFormatSelect.value || 'plain'
+        openRouterOutputFormat: openRouterOutputFormatSelect?.value || 'plain',
+        openRouterCustomModel: openRouterCustomModelInput?.value || ''
     };
     localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
 };
@@ -505,7 +549,7 @@ const persistOpenRouterKeyIfAllowed = async () => {
         return;
     }
 
-    if (!isOpenRouterGemmaSelected()) return;
+    if (!isOpenRouterSelected()) return;
     const allowed = await ensureOpenRouterKeyStorageConsent();
     if (!allowed) return;
 
@@ -524,7 +568,8 @@ const loadUserPreferences = async () => {
             const prefs = JSON.parse(prefsRaw);
             if (prefs.language) languageSelect.value = prefs.language;
             if (prefs.engine) ocrEngineSelect.value = prefs.engine;
-            if (prefs.openRouterOutputFormat) openRouterOutputFormatSelect.value = prefs.openRouterOutputFormat;
+            if (prefs.openRouterOutputFormat && openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = prefs.openRouterOutputFormat;
+            if (prefs.openRouterCustomModel && openRouterCustomModelInput) openRouterCustomModelInput.value = prefs.openRouterCustomModel;
         }
     } catch (err) {
         console.warn('Failed to load preferences:', err);
@@ -869,54 +914,65 @@ const applyPageSelectionToPdf = async (pdfFile, selectedStart, selectedEnd) => {
 const saveSettings = async () => {
     if (!settingsFileId) return;
     const file = filesData.find(f => f.id === settingsFileId);
-    if (file) {
-        const prevRotation = file.rotation || 0;
-        const prevStartPage = file.startPage;
-        const prevEndPage = file.endPage;
+    if (!file) {
+        closeSettings();
+        return;
+    }
 
-        if (file.type === 'pdf') {
-            const selectedStart = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
-            const selectedEnd = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
-            await applyPageSelectionToPdf(file, selectedStart, selectedEnd);
+    const prevRotation = file.rotation || 0;
+    const prevStartPage = file.startPage;
+    const prevEndPage = file.endPage;
+    let selectedStart = null;
+    let selectedEnd = null;
 
-            const totalPdfFiles = filesData.filter((f) => f.type === 'pdf').length;
-            const pageSelectionChanged = prevStartPage !== file.startPage || prevEndPage !== file.endPage;
-            if (totalPdfFiles > 1 && pageSelectionChanged) {
-                const applyToRestPages = await showAppConfirm(
-                    'Apply this page selection to other uploaded PDFs?\n\nRule:\n- Start applies to all (or clears if empty)\n- Empty End clears all\n- End 10 applies only where total pages >= 10, otherwise each PDF keeps its current end value.',
-                    { title: 'Apply Page Selection', confirmText: 'Apply to all PDFs', cancelText: 'This PDF only' }
-                );
+    if (file.type === 'pdf') {
+        selectedStart = startPageInput.value ? parseInt(startPageInput.value, 10) : null;
+        selectedEnd = endPageInput.value ? parseInt(endPageInput.value, 10) : null;
+        await applyPageSelectionToPdf(file, selectedStart, selectedEnd);
+    }
 
-                if (applyToRestPages) {
-                    for (const pdfFile of filesData) {
-                        if (pdfFile.type !== 'pdf' || pdfFile.id === file.id) continue;
-                        await applyPageSelectionToPdf(pdfFile, selectedStart, selectedEnd);
-                    }
-                }
-            }
-        }
+    applyRotationToFile(file, settingsRotation);
 
-        applyRotationToFile(file, settingsRotation);
-        const rotationChanged = prevRotation !== (file.rotation || 0);
-        if (rotationChanged && filesData.length > 1) {
-            const applyRotationToRest = await showAppConfirm(
-                'Apply this rotation to other uploaded files?',
-                { title: 'Apply Rotation', confirmText: 'Apply to all', cancelText: 'This file only' }
+    // Close settings modal FIRST so it doesn't overlap or interfere with alert modals
+    closeSettings();
+
+    // Now trigger the alerts if needed
+    if (file.type === 'pdf') {
+        const totalPdfFiles = filesData.filter((f) => f.type === 'pdf').length;
+        const pageSelectionChanged = prevStartPage !== file.startPage || prevEndPage !== file.endPage;
+        if (totalPdfFiles > 1 && pageSelectionChanged) {
+            const applyToRestPages = await showAppConfirm(
+                'Apply this page selection to other uploaded PDFs?\n\nRule:\n- Start applies to all (or clears if empty)\n- Empty End clears all\n- End 10 applies only where total pages >= 10, otherwise each PDF keeps its current end value.',
+                { title: 'Apply Page Selection', confirmText: 'Apply to all PDFs', cancelText: 'This PDF only' }
             );
 
-            if (applyRotationToRest) {
-                for (const target of filesData) {
-                    if (target.id === file.id) continue;
-                    applyRotationToFile(target, settingsRotation, false);
+            if (applyToRestPages) {
+                for (const pdfFile of filesData) {
+                    if (pdfFile.type !== 'pdf' || pdfFile.id === file.id) continue;
+                    await applyPageSelectionToPdf(pdfFile, selectedStart, selectedEnd);
                 }
-                showToast('Rotation applied to all files.');
             }
         }
-
-        renderPreview();
-        renderResult();
     }
-    closeSettings();
+
+    const rotationChanged = prevRotation !== (file.rotation || 0);
+    if (rotationChanged && filesData.length > 1) {
+        const applyRotationToRest = await showAppConfirm(
+            'Apply this rotation to other uploaded files?',
+            { title: 'Apply Rotation', confirmText: 'Apply to all', cancelText: 'This file only' }
+        );
+
+        if (applyRotationToRest) {
+            for (const target of filesData) {
+                if (target.id === file.id) continue;
+                applyRotationToFile(target, settingsRotation, false);
+            }
+            showToast('Rotation applied to all files.');
+        }
+    }
+
+    renderPreview();
+    renderResult();
 };
 
 // --- Rendering ---
@@ -982,6 +1038,12 @@ const resetZoomPan = () => {
     zoomLevel = 1;
     panX = 0;
     panY = 0;
+};
+
+const recenterPreviewView = () => {
+    resetZoomPan();
+    renderPreview();
+    renderResult();
 };
 
 const applyTransform = () => {
@@ -1191,8 +1253,11 @@ const renderPreview = () => {
     const img = document.createElement('img');
     img.src = src;
     img.className = 'preview-image';
-    img.style.transform = `rotate(${file.rotation || 0}deg)`;
-    img.style.transformOrigin = 'center center';
+    const shouldRotateWithCss = !(file.type === 'pdf' && file.pages.length > 0);
+    if (shouldRotateWithCss) {
+        img.style.transform = `rotate(${file.rotation || 0}deg)`;
+        img.style.transformOrigin = 'center center';
+    }
 
     imgWrapper.appendChild(img);
     viewport.appendChild(imgWrapper);
@@ -1249,7 +1314,7 @@ const setupColumns = (cols) => {
     updateColumnsButtonUI();
 
     // Render preview to show/hide splitters
-    renderPreview();
+    recenterPreviewView();
     updateGlobalButtons(); // Re-eval Process Button state
 };
 
@@ -1305,9 +1370,7 @@ const navigatePage = (direction) => {
     if (newPage < 0 || newPage >= file.pages.length) return;
 
     file.currentPage = newPage;
-    resetZoomPan();
-    renderPreview();
-    renderResult();
+    recenterPreviewView();
 };
 
 const renderResult = () => {
@@ -1338,8 +1401,9 @@ const updateGlobalButtons = () => {
     const isProcessing = batchProgress.running || filesData.some(f => f.status === 'processing');
     const isConfiguringColumns = globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active;
     const googleKeyMissing = isGoogleVisionSelected() && !getGoogleVisionApiKey();
-    const openRouterKeyMissing = isOpenRouterGemmaSelected() && !getOpenRouterApiKey();
-    const isStartBlockedByConfig = isConfiguringColumns || googleKeyMissing || openRouterKeyMissing;
+    const openRouterKeyMissing = isOpenRouterSelected() && !getOpenRouterApiKey();
+    const openRouterCustomModelMissing = isOpenRouterCustomSelected() && (openRouterCustomModelInput?.value || '').trim() === '';
+    const isStartBlockedByConfig = isConfiguringColumns || googleKeyMissing || openRouterKeyMissing || openRouterCustomModelMissing;
 
     if (processBtn) {
         processBtn.disabled = !hasFiles || isProcessing || isStartBlockedByConfig;
@@ -1401,8 +1465,12 @@ const handleProcessClick = () => {
         showAppAlert('Please enter your Google Vision API key first.', { title: 'Google Vision API Key' });
         return;
     }
-    if (isOpenRouterGemmaSelected() && !getOpenRouterApiKey()) {
+    if (isOpenRouterSelected() && !getOpenRouterApiKey()) {
         showAppAlert('Please enter your OpenRouter API key first.', { title: 'OpenRouter API Key' });
+        return;
+    }
+    if (isOpenRouterCustomSelected() && (!openRouterCustomModelInput || !openRouterCustomModelInput.value.trim())) {
+        showAppAlert('Please enter a custom OpenRouter model string (e.g. anthropic/claude-3-haiku).', { title: 'Missing Custom Model' });
         return;
     }
     openReviewModal();
@@ -1683,7 +1751,7 @@ const processPdfDocument = async (file) => {
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const workingBlob = await rotateImageBlob(blob, file.rotation || 0);
-            const imageUrl = URL.createObjectURL(blob);
+            const imageUrl = URL.createObjectURL(workingBlob);
 
             // 2. Add to pages array (initially without text)
             file.pages.push({

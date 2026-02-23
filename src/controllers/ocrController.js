@@ -14,6 +14,7 @@ exports.processFile = async (req, res) => {
         const googleApiKey = (req.body.googleApiKey || '').trim();
         const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
         const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
+        const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
 
         if (engine === 'gemma-openrouter' && !openRouterApiKey) {
             if (req.file) deleteFile(req.file.path);
@@ -26,7 +27,8 @@ exports.processFile = async (req, res) => {
             engine,
             googleApiKey,
             openRouterApiKey,
-            openRouterOutputFormat
+            openRouterOutputFormat,
+            openRouterCustomModel
         });
 
         deleteFile(filePath);
@@ -49,6 +51,7 @@ exports.processBatch = async (req, res) => {
     const googleApiKey = (req.body.googleApiKey || '').trim();
     const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
+    const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
     const files = req.files;
 
     // Immediate response
@@ -59,7 +62,8 @@ exports.processBatch = async (req, res) => {
         engine,
         googleApiKey,
         openRouterApiKey,
-        openRouterOutputFormat
+        openRouterOutputFormat,
+        openRouterCustomModel
     });
 };
 
