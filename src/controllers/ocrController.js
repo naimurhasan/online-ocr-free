@@ -12,12 +12,19 @@ exports.processFile = async (req, res) => {
         const lang = req.body.lang || 'eng+ben';
         const engine = req.body.engine || 'tesseract';
         const googleApiKey = (req.body.googleApiKey || '').trim();
+        const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+
+        if (engine === 'gemma-openrouter' && !openRouterApiKey) {
+            if (req.file) deleteFile(req.file.path);
+            return res.status(400).json({ error: 'OpenRouter API key is required. Provide it in UI or set OPENROUTER_API_KEY in .env.' });
+        }
 
         console.log(`Processing file: ${filePath} with lang: ${lang} and engine: ${engine}`);
 
         const textResult = await extractText(filePath, mimetype, lang, true, {
             engine,
-            googleApiKey
+            googleApiKey,
+            openRouterApiKey
         });
 
         deleteFile(filePath);
@@ -38,6 +45,7 @@ exports.processBatch = async (req, res) => {
     const { email, lang } = req.body;
     const engine = req.body.engine || 'tesseract';
     const googleApiKey = (req.body.googleApiKey || '').trim();
+    const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     const files = req.files;
 
     // Immediate response
@@ -46,7 +54,8 @@ exports.processBatch = async (req, res) => {
     // Background processing
     processBatchFiles(files, lang || 'eng+ben', email, {
         engine,
-        googleApiKey
+        googleApiKey,
+        openRouterApiKey
     });
 };
 

@@ -82,10 +82,14 @@
                     <select id="ocrEngine">
                         <option value="tesseract" selected>Tesseract OCR (Free)</option>
                         <option value="google-vision">Google Vision API</option>
+                        <option value="gemma-openrouter">Gemma (OpenRouter)</option>
                     </select>
                 </div>
                 <div id="googleVisionKeyWrap" class="engine-key-wrap hidden">
                     <input type="password" id="googleVisionApiKey" placeholder="Google Vision API Key">
+                </div>
+                <div id="openRouterKeyWrap" class="engine-key-wrap hidden">
+                    <input type="password" id="openRouterApiKey" placeholder="OpenRouter API Key">
                 </div>
 
                 <button id="addFilesBtn" class="btn-secondary">

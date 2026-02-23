@@ -45,6 +45,8 @@ const languageWrap = document.getElementById('languageWrap');
 const ocrEngineSelect = document.getElementById('ocrEngine');
 const googleVisionKeyWrap = document.getElementById('googleVisionKeyWrap');
 const googleVisionApiKeyInput = document.getElementById('googleVisionApiKey');
+const openRouterKeyWrap = document.getElementById('openRouterKeyWrap');
+const openRouterApiKeyInput = document.getElementById('openRouterApiKey');
 const fileCountSpan = document.getElementById('fileCount');
 const reviewModal = document.getElementById('reviewModal');
 const cancelReviewBtn = document.getElementById('cancelReviewBtn');
@@ -138,6 +140,8 @@ let appAlertResolver = null;
 const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
 const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
 const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';
+const OPENROUTER_KEY_STORAGE_KEY = 'ocr_magic_openrouter_key_enc_v1';
+const OPENROUTER_KEY_CONSENT_KEY = 'ocr_magic_openrouter_key_cookie_consent_v1';
 
 const init = async () => {
     initTheme();
@@ -209,12 +213,19 @@ const setupEventListeners = () => {
         if (isGoogleVisionSelected()) {
             await ensureGoogleKeyStorageConsent();
         }
+        if (isOpenRouterGemmaSelected()) {
+            await ensureOpenRouterKeyStorageConsent();
+        }
         saveUserPreferences();
         updateEngineUI();
         updateGlobalButtons();
     });
     googleVisionApiKeyInput.addEventListener('input', async () => {
         await persistGoogleKeyIfAllowed();
+        updateGlobalButtons();
+    });
+    openRouterApiKeyInput.addEventListener('input', async () => {
+        await persistOpenRouterKeyIfAllowed();
         updateGlobalButtons();
     });
 
@@ -328,12 +339,15 @@ const updateThemeIcon = (isDark) => {
 };
 
 const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'google-vision';
+const isOpenRouterGemmaSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemma-openrouter';
 
 const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim();
+const getOpenRouterApiKey = () => (openRouterApiKeyInput?.value || '').trim();
 
 const updateEngineUI = () => {
-    if (!googleVisionKeyWrap) return;
+    if (!googleVisionKeyWrap || !openRouterKeyWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
+    openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterGemmaSelected());
 };
 
 const appendOcrConfigToFormData = (formData) => {
@@ -341,6 +355,9 @@ const appendOcrConfigToFormData = (formData) => {
     formData.append('engine', ocrEngineSelect.value);
     if (isGoogleVisionSelected()) {
         formData.append('googleApiKey', getGoogleVisionApiKey());
+    }
+    if (isOpenRouterGemmaSelected()) {
+        formData.append('openRouterApiKey', getOpenRouterApiKey());
     }
 };
 
@@ -353,6 +370,7 @@ const saveUserPreferences = () => {
 };
 
 const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KEY);
+const getOpenRouterStorageConsent = () => localStorage.getItem(OPENROUTER_KEY_CONSENT_KEY);
 
 const resolveAppAlert = (result) => {
     if (appAlertResolver) {
@@ -421,6 +439,25 @@ const ensureGoogleKeyStorageConsent = async () => {
     return accepted;
 };
 
+const ensureOpenRouterKeyStorageConsent = async () => {
+    const consent = getOpenRouterStorageConsent();
+    if (consent === 'accepted') return true;
+
+    const accepted = await showAppConfirm(
+        'Allow this app to use browser cookies/local storage to save your encrypted OpenRouter API key on this device?',
+        { title: 'Storage Permission', confirmText: 'Allow' }
+    );
+    if (accepted) {
+        localStorage.setItem(OPENROUTER_KEY_CONSENT_KEY, 'accepted');
+    } else {
+        localStorage.removeItem(OPENROUTER_KEY_CONSENT_KEY);
+    }
+    if (!accepted) {
+        localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
+    }
+    return accepted;
+};
+
 const encryptForStorage = async (plainText) => {
     return btoa(unescape(encodeURIComponent(plainText)));
 };
@@ -453,6 +490,27 @@ const persistGoogleKeyIfAllowed = async () => {
     }
 };
 
+const persistOpenRouterKeyIfAllowed = async () => {
+    if (!openRouterApiKeyInput) return;
+    const keyValue = getOpenRouterApiKey();
+
+    if (!keyValue) {
+        localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
+        return;
+    }
+
+    if (!isOpenRouterGemmaSelected()) return;
+    const allowed = await ensureOpenRouterKeyStorageConsent();
+    if (!allowed) return;
+
+    try {
+        const encrypted = await encryptForStorage(keyValue);
+        localStorage.setItem(OPENROUTER_KEY_STORAGE_KEY, encrypted);
+    } catch (err) {
+        console.error('Failed to encrypt/store OpenRouter key:', err);
+    }
+};
+
 const loadUserPreferences = async () => {
     try {
         const prefsRaw = localStorage.getItem(PREFS_STORAGE_KEY);
@@ -465,16 +523,30 @@ const loadUserPreferences = async () => {
         console.warn('Failed to load preferences:', err);
     }
 
-    // Load encrypted key only if user already granted consent
-    if (getGoogleStorageConsent() !== 'accepted') return;
-    try {
-        const encrypted = localStorage.getItem(GOOGLE_KEY_STORAGE_KEY);
-        if (!encrypted) return;
-        const decrypted = await decryptFromStorage(encrypted);
-        if (decrypted) googleVisionApiKeyInput.value = decrypted;
-    } catch (err) {
-        console.warn('Failed to decrypt stored Google key:', err);
-        localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+    if (getGoogleStorageConsent() === 'accepted') {
+        try {
+            const encrypted = localStorage.getItem(GOOGLE_KEY_STORAGE_KEY);
+            if (encrypted) {
+                const decrypted = await decryptFromStorage(encrypted);
+                if (decrypted) googleVisionApiKeyInput.value = decrypted;
+            }
+        } catch (err) {
+            console.warn('Failed to decrypt stored Google key:', err);
+            localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+        }
+    }
+
+    if (getOpenRouterStorageConsent() === 'accepted') {
+        try {
+            const encrypted = localStorage.getItem(OPENROUTER_KEY_STORAGE_KEY);
+            if (encrypted) {
+                const decrypted = await decryptFromStorage(encrypted);
+                if (decrypted) openRouterApiKeyInput.value = decrypted;
+            }
+        } catch (err) {
+            console.warn('Failed to decrypt stored OpenRouter key:', err);
+            localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
+        }
     }
 };
 
@@ -1255,10 +1327,12 @@ const updateGlobalButtons = () => {
     const hasFiles = filesData.length > 0;
     const hasDoneFiles = filesData.some(f => f.status === 'done');
     const allProcessed = hasFiles && filesData.every(f => f.status === 'done' || f.status === 'error');
+    const hasErrorFiles = filesData.some(f => f.status === 'error');
     const isProcessing = batchProgress.running || filesData.some(f => f.status === 'processing');
     const isConfiguringColumns = globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active;
     const googleKeyMissing = isGoogleVisionSelected() && !getGoogleVisionApiKey();
-    const isStartBlockedByConfig = isConfiguringColumns || googleKeyMissing;
+    const openRouterKeyMissing = isOpenRouterGemmaSelected() && !getOpenRouterApiKey();
+    const isStartBlockedByConfig = isConfiguringColumns || googleKeyMissing || openRouterKeyMissing;
 
     if (processBtn) {
         processBtn.disabled = !hasFiles || isProcessing || isStartBlockedByConfig;
@@ -1266,11 +1340,17 @@ const updateGlobalButtons = () => {
         if (isProcessing) {
             processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing All...';
         } else if (allProcessed) {
-            processBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clear Files';
+            if (hasErrorFiles) {
+                processBtn.innerHTML = '<i class="fas fa-rotate-right"></i> Restart Processing';
+            } else {
+                processBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clear Files';
+            }
         } else if (isConfiguringColumns) {
             processBtn.innerHTML = '<i class="fas fa-play"></i> Confirm Columns First';
         } else if (googleKeyMissing) {
             processBtn.innerHTML = '<i class="fas fa-key"></i> Add Google API Key';
+        } else if (openRouterKeyMissing) {
+            processBtn.innerHTML = '<i class="fas fa-key"></i> Add OpenRouter API Key';
         } else {
             processBtn.innerHTML = '<i class="fas fa-play"></i> Start OCR Processing (All)';
         }
@@ -1284,22 +1364,37 @@ const updateGlobalButtons = () => {
     if (languageSelect) languageSelect.disabled = isProcessing;
     if (ocrEngineSelect) ocrEngineSelect.disabled = isProcessing;
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.disabled = isProcessing || !isGoogleVisionSelected();
+    if (openRouterApiKeyInput) openRouterApiKeyInput.disabled = isProcessing || !isOpenRouterGemmaSelected();
 };
 
 // --- Actions ---
 const handleProcessClick = () => {
     if (batchProgress.running || filesData.length === 0) return;
     const allProcessed = filesData.every(f => f.status === 'done' || f.status === 'error');
+    const hasErrorFiles = filesData.some(f => f.status === 'error');
     if (allProcessed) {
-        showAppConfirm('Clear all files from the queue?', { title: 'Clear Files', confirmText: 'Clear', danger: true })
-            .then((confirmClear) => {
-                if (confirmClear) clearAll();
+        if (hasErrorFiles) {
+            showAppConfirm(
+                'Some files have errors. Restart OCR processing for all files?',
+                { title: 'Restart Processing', confirmText: 'Restart', cancelText: 'Cancel' }
+            ).then((confirmRestart) => {
+                if (confirmRestart) openReviewModal();
             });
+        } else {
+            showAppConfirm('Clear all files from the queue?', { title: 'Clear Files', confirmText: 'Clear', danger: true })
+                .then((confirmClear) => {
+                    if (confirmClear) clearAll();
+                });
+        }
         return;
     }
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
     if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
         showAppAlert('Please enter your Google Vision API key first.', { title: 'Google Vision API Key' });
+        return;
+    }
+    if (isOpenRouterGemmaSelected() && !getOpenRouterApiKey()) {
+        showAppAlert('Please enter your OpenRouter API key first.', { title: 'OpenRouter API Key' });
         return;
     }
     openReviewModal();

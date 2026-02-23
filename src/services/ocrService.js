@@ -12,6 +12,8 @@ const TESSERACT_OPTS = {
 };
 
 const GOOGLE_VISION_ENDPOINT = 'https://vision.googleapis.com/v1/images:annotate';
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_GEMMA_MODEL = 'google/gemma-3-27b-it:free';
 
 const LANGUAGE_HINTS_MAP = {
     ben: 'bn',
@@ -31,6 +33,27 @@ const getGoogleLanguageHints = (lang = 'ben') => {
         .map(code => code.trim().toLowerCase())
         .map(code => LANGUAGE_HINTS_MAP[code] || null)
         .filter(Boolean);
+};
+
+const LANGUAGE_LABEL_MAP = {
+    ben: 'Bangla',
+    eng: 'English',
+    hin: 'Hindi',
+    ara: 'Arabic',
+    urd: 'Urdu',
+    tam: 'Tamil',
+    tel: 'Telugu',
+    mar: 'Marathi',
+    nep: 'Nepali'
+};
+
+const getLanguageLabelForPrompt = (lang = 'eng') => {
+    return lang
+        .split('+')
+        .map(code => code.trim().toLowerCase())
+        .filter(Boolean)
+        .map(code => LANGUAGE_LABEL_MAP[code] || code)
+        .join(', ');
 };
 
 const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
@@ -72,6 +95,71 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     }
 
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
+};
+
+const extractTextWithOpenRouterGemma = async (imagePath, mimeType, lang, openRouterApiKey) => {
+    const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+    if (!resolvedKey) {
+        throw new Error('OpenRouter API key is required');
+    }
+    const rawKey = resolvedKey.toLowerCase().startsWith('bearer ')
+        ? resolvedKey.slice(7).trim()
+        : resolvedKey;
+    if (!rawKey) {
+        throw new Error('OpenRouter API key is required');
+    }
+
+    const safeMimeType = mimeType || 'image/png';
+    const imageBuffer = await fs.readFile(imagePath);
+    const imageDataUrl = `data:${safeMimeType};base64,${imageBuffer.toString('base64')}`;
+    const languageHint = getLanguageLabelForPrompt(lang);
+
+    const response = await fetch(OPENROUTER_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${rawKey}`,
+            'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'http://localhost:3000',
+            'X-Title': process.env.OPENROUTER_APP_TITLE || 'OCR Magic'
+        },
+        body: JSON.stringify({
+            model: OPENROUTER_GEMMA_MODEL,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `You are an OCR engine. Extract all readable text from this image.\nRules:\n- Return plain text only.\n- Preserve line breaks and reading order.\n- Do not add commentary or explanations.\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: imageDataUrl
+                            }
+                        }
+                    ]
+                }
+            ]
+        })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        console.error("OpenRouter Error Payload:", JSON.stringify(payload, null, 2));
+        const message = payload?.error?.message || `OpenRouter request failed (${response.status})`;
+        throw new Error(message);
+    }
+
+    const content = payload?.choices?.[0]?.message?.content;
+    if (Array.isArray(content)) {
+        return content
+            .map(part => (typeof part === 'string' ? part : part?.text || ''))
+            .join('\n')
+            .trim();
+    }
+
+    return (content || '').trim();
 };
 
 const validateTesseractLanguages = async (lang = 'ben') => {
@@ -178,10 +266,13 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
 const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, options = {}) => {
     const engine = options.engine || 'tesseract';
     const googleApiKey = options.googleApiKey || '';
+    const openRouterApiKey = options.openRouterApiKey || '';
+    const useTesseract = engine === 'tesseract';
     const useGoogleVision = engine === 'google-vision';
+    const useGemmaOpenRouter = engine === 'gemma-openrouter';
     let textResult = '';
 
-    if (!useGoogleVision) {
+    if (useTesseract) {
         await validateTesseractLanguages(lang);
     }
 
@@ -196,6 +287,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
             if (useGoogleVision) {
                 console.log('🔍 Running OCR with Google Vision API...');
                 text = await extractTextWithGoogleVision(image, lang, googleApiKey);
+            } else if (useGemmaOpenRouter) {
+                console.log('🔍 Running OCR with OpenRouter Gemma...');
+                text = await extractTextWithOpenRouterGemma(image, 'image/png', lang, openRouterApiKey);
             } else {
                 const processedImage = saveSteps
                     ? await preprocessImageWithSteps(image, `page${i + 1}`)
@@ -225,6 +319,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
         if (useGoogleVision) {
             console.log('🔍 Running OCR with Google Vision API...');
             textResult = await extractTextWithGoogleVision(filePath, lang, googleApiKey);
+        } else if (useGemmaOpenRouter) {
+            console.log('🔍 Running OCR with OpenRouter Gemma...');
+            textResult = await extractTextWithOpenRouterGemma(filePath, mimetype, lang, openRouterApiKey);
         } else {
             const processedImage = saveSteps
                 ? await preprocessImageWithSteps(filePath, 'single')
