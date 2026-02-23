@@ -736,6 +736,7 @@ const selectFile = (id) => {
     renderFileList(); // Update active class
     renderPreview();
     renderResult();
+    requestAnimationFrame(() => fitImageInPreview());
 };
 
 const revokeFileResources = (file) => {
@@ -1040,10 +1041,46 @@ const resetZoomPan = () => {
     panY = 0;
 };
 
+const fitImageInPreview = () => {
+    const img = previewContainer.querySelector('.preview-image');
+    if (!img) {
+        applyTransform();
+        return;
+    }
+
+    const applyFit = () => {
+        const containerRect = previewContainer.getBoundingClientRect();
+        const currentZoom = zoomLevel || 1;
+        const imgRect = img.getBoundingClientRect();
+        if (!containerRect.width || !containerRect.height || !imgRect.width || !imgRect.height) {
+            applyTransform();
+            return;
+        }
+
+        const baseWidth = imgRect.width / currentZoom;
+        const baseHeight = imgRect.height / currentZoom;
+        const fitScale = Math.min(containerRect.width / baseWidth, containerRect.height / baseHeight);
+
+        zoomLevel = Math.max(0.2, Math.min(1, fitScale));
+        const centeredPanX = (containerRect.width * (1 - zoomLevel)) / 2;
+        const centeredPanY = (containerRect.height * (1 - zoomLevel)) / 2;
+        panX = centeredPanX;
+        panY = centeredPanY + 8; // keep a small breathing space below top bar
+        applyTransform();
+    };
+
+    if (img.complete) {
+        applyFit();
+    } else {
+        img.addEventListener('load', applyFit, { once: true });
+    }
+};
+
 const recenterPreviewView = () => {
     resetZoomPan();
     renderPreview();
     renderResult();
+    requestAnimationFrame(() => fitImageInPreview());
 };
 
 const applyTransform = () => {
@@ -1092,8 +1129,7 @@ const zoomOut = () => {
 };
 
 const zoomReset = () => {
-    resetZoomPan();
-    applyTransform();
+    fitImageInPreview();
 };
 
 const renderPreview = () => {
@@ -1255,8 +1291,30 @@ const renderPreview = () => {
     img.className = 'preview-image';
     const shouldRotateWithCss = !(file.type === 'pdf' && file.pages.length > 0);
     if (shouldRotateWithCss) {
-        img.style.transform = `rotate(${file.rotation || 0}deg)`;
+        const rotation = file.rotation || 0;
+        img.style.transform = `rotate(${rotation}deg)`;
         img.style.transformOrigin = 'center center';
+
+        const applyRotationScale = () => {
+            if (rotation === 90 || rotation === 270) {
+                const cw = previewContainer.clientWidth;
+                const ch = previewContainer.clientHeight;
+                const rw = img.width;
+                const rh = img.height;
+                if (rw > 0 && rh > 0 && cw > 0 && ch > 0) {
+                    const scaleX = cw / rh;
+                    const scaleY = ch / rw;
+                    const scale = Math.min(scaleX, scaleY, 1);
+                    img.style.transform = `rotate(${rotation}deg) scale(${scale})`;
+                }
+            }
+        };
+
+        if (img.complete) {
+            applyRotationScale();
+        } else {
+            img.onload = applyRotationScale;
+        }
     }
 
     imgWrapper.appendChild(img);
@@ -1369,8 +1427,10 @@ const navigatePage = (direction) => {
     const newPage = file.currentPage + direction;
     if (newPage < 0 || newPage >= file.pages.length) return;
 
+    // Keep current zoom/pan when changing page so the new page inherits last page view state
     file.currentPage = newPage;
-    recenterPreviewView();
+    renderPreview();
+    renderResult();
 };
 
 const renderResult = () => {
