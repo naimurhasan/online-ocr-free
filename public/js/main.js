@@ -2045,115 +2045,84 @@ const processPdfDocument = async (file) => {
         const totalPagesToProcess = end - start + 1;
         const concurrency = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
 
-        // Phase 1: Render all pages to blobs sequentially (canvas is main-thread)
-        const pageJobs = [];
-        for (let i = start; i <= end; i++) {
-            if (batchProgress.running) {
-                batchProgress.currentFileName = `${file.name} (rendering page ${i - start + 1}/${totalPagesToProcess})`;
-                updateOverallProgressUI();
+        let ocrCompleted = 0;
+        const pageNumbers = [];
+        for (let i = start; i <= end; i++) pageNumbers.push(i);
+
+        // Process in chunks of `concurrency` — render chunk, OCR chunk, free blobs, repeat
+        for (let chunkStart = 0; chunkStart < pageNumbers.length; chunkStart += concurrency) {
+            const chunk = pageNumbers.slice(chunkStart, chunkStart + concurrency);
+
+            // Step 1: Render this chunk's pages to blobs
+            const chunkJobs = [];
+            for (const pageNum of chunk) {
+                if (batchProgress.running) {
+                    batchProgress.currentFileName = `${file.name} (page ${pageNum - start + 1}/${totalPagesToProcess})`;
+                    updateOverallProgressUI();
+                }
+
+                const pageIndex = file.pages.length;
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const workingBlob = await rotateImageBlob(blob, file.rotation || 0);
+                const imageUrl = URL.createObjectURL(workingBlob);
+
+                file.pages.push({ pageNum, imgUrl: imageUrl, text: 'Processing...' });
+                chunkJobs.push({ pageIndex, pageNum, workingBlob });
+
+                // Free canvas immediately
+                canvas.width = 0;
+                canvas.height = 0;
             }
-
-            const pageIndex = file.pages.length;
-
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.0 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const workingBlob = await rotateImageBlob(blob, file.rotation || 0);
-            const imageUrl = URL.createObjectURL(workingBlob);
-
-            file.pages.push({
-                pageNum: i,
-                imgUrl: imageUrl,
-                text: 'Processing...'
-            });
-
-            pageJobs.push({ pageIndex, pageNum: i, workingBlob });
             renderPreview();
             renderResult();
-        }
 
-        // Phase 2: Send OCR requests concurrently using promise-pool
-        if (batchProgress.running) {
-            batchProgress.currentFileName = `${file.name} (OCR: 0/${totalPagesToProcess})`;
-            updateOverallProgressUI();
-        }
-
-        let ocrCompleted = 0;
-        const inFlight = new Set();
-        let jobIndex = 0;
-
-        const launchOcrJob = (job) => {
-            const promise = (async () => {
+            // Step 2: Send this chunk's OCR requests concurrently
+            const ocrPromises = chunkJobs.map(job => (async () => {
                 try {
                     if (fileColumns.active && fileColumns.numColumns > 1) {
                         const textParts = [];
                         const splits = [0, ...fileColumns.splitPositions, 1];
-
                         for (let c = 0; c < splits.length - 1; c++) {
-                            const startPct = splits[c];
-                            const endPct = splits[c + 1];
-                            const croppedBlob = await cropImageBlob(job.workingBlob, startPct, endPct);
-
+                            const croppedBlob = await cropImageBlob(job.workingBlob, splits[c], splits[c + 1]);
                             const formData = new FormData();
                             formData.append('file', croppedBlob, `page_${job.pageNum}_col_${c + 1}.png`);
                             appendOcrConfigToFormData(formData);
-
                             const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                             const data = await response.json();
-
-                            if (response.ok) {
-                                textParts.push(data.text);
-                            } else {
-                                textParts.push(`[Error in Column ${c + 1}: ${data.error || 'Unknown error'}]`);
-                            }
+                            textParts.push(response.ok ? data.text : `[Error Col ${c + 1}: ${data.error || 'Unknown'}]`);
                         }
                         file.pages[job.pageIndex].text = textParts.join('\n\n--- Column Break ---\n\n');
                     } else {
                         const formData = new FormData();
                         formData.append('file', job.workingBlob, `page_${job.pageNum}.png`);
                         appendOcrConfigToFormData(formData);
-
                         const response = await fetch('/api/ocr', { method: 'POST', body: formData });
                         const data = await response.json();
-                        if (response.ok) {
-                            file.pages[job.pageIndex].text = data.text;
-                        } else {
-                            file.pages[job.pageIndex].text = "Error: " + (data.error || 'Unknown error');
-                        }
+                        file.pages[job.pageIndex].text = response.ok ? data.text : "Error: " + (data.error || 'Unknown error');
                     }
                 } catch (err) {
                     file.pages[job.pageIndex].text = "Error: Connection failed";
                 }
+                // Release the blob ref after OCR upload
+                job.workingBlob = null;
                 ocrCompleted++;
                 if (batchProgress.running) {
                     batchProgress.currentFileName = `${file.name} (OCR: ${ocrCompleted}/${totalPagesToProcess})`;
                     updateOverallProgressUI();
                 }
                 renderResult();
-            })();
+            })());
 
-            inFlight.add(promise);
-            promise.finally(() => inFlight.delete(promise));
-            return promise;
-        };
-
-        // Fill initial pool
-        while (inFlight.size < concurrency && jobIndex < pageJobs.length) {
-            launchOcrJob(pageJobs[jobIndex++]);
-        }
-
-        // As each finishes, launch the next
-        while (inFlight.size > 0) {
-            await Promise.race(inFlight);
-            while (inFlight.size < concurrency && jobIndex < pageJobs.length) {
-                launchOcrJob(pageJobs[jobIndex++]);
-            }
+            // Wait for all OCR in this chunk to finish before rendering next chunk
+            await Promise.all(ocrPromises);
         }
 
         if (batchProgress.running) {
