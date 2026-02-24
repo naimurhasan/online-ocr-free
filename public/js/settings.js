@@ -15,6 +15,7 @@ const fetchServerConfig = async () => {
 };
 
 const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'google-vision';
+const isGeminiSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemini-flash';
 const isOpenRouterSelected = () => ocrEngineSelect && (
     ocrEngineSelect.value === 'gemma-openrouter-free' ||
     ocrEngineSelect.value === 'gemma-openrouter-paid' ||
@@ -25,11 +26,13 @@ const isOpenRouterSelected = () => ocrEngineSelect && (
 const isOpenRouterCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'openrouter-custom';
 
 const getGoogleVisionApiKey = () => (googleVisionApiKeyInput?.value || '').trim();
+const getGeminiApiKey = () => (geminiApiKeyInput?.value || '').trim();
 const getOpenRouterApiKey = () => (openRouterApiKeyInput?.value || '').trim();
 
 const updateEngineUI = () => {
     if (!googleVisionKeyWrap || !openRouterKeyWrap || !openRouterFormatWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
+    if (geminiKeyWrap) geminiKeyWrap.classList.toggle('hidden', !isGeminiSelected());
     openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterSelected());
     openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterSelected());
     if (openRouterCustomModelWrap) {
@@ -42,6 +45,9 @@ const appendOcrConfigToFormData = (formData) => {
     formData.append('engine', ocrEngineSelect.value);
     if (isGoogleVisionSelected()) {
         formData.append('googleApiKey', getGoogleVisionApiKey());
+    }
+    if (isGeminiSelected()) {
+        formData.append('geminiApiKey', getGeminiApiKey());
     }
     if (isOpenRouterSelected()) {
         formData.append('openRouterApiKey', getOpenRouterApiKey());
@@ -134,6 +140,8 @@ const resetAllSettings = async () => {
     localStorage.removeItem(ADVANCED_SETTINGS_KEY);
     localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
     localStorage.removeItem(GOOGLE_KEY_CONSENT_KEY);
+    localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+    localStorage.removeItem(GEMINI_KEY_CONSENT_KEY);
     localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
     localStorage.removeItem(OPENROUTER_KEY_CONSENT_KEY);
 
@@ -142,6 +150,7 @@ const resetAllSettings = async () => {
     if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = 'plain';
     if (openRouterCustomModelInput) openRouterCustomModelInput.value = '';
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.value = '';
+    if (geminiApiKeyInput) geminiApiKeyInput.value = '';
     if (openRouterApiKeyInput) openRouterApiKeyInput.value = '';
 
     advancedSettings = { concurrentThreads: 1, customPrompt: '', skipPreprocessing: false };
@@ -169,6 +178,7 @@ const decodeFromStorage = (payload) => {
 };
 
 const getGoogleStorageConsent = () => localStorage.getItem(GOOGLE_KEY_CONSENT_KEY);
+const getGeminiStorageConsent = () => localStorage.getItem(GEMINI_KEY_CONSENT_KEY);
 const getOpenRouterStorageConsent = () => localStorage.getItem(OPENROUTER_KEY_CONSENT_KEY);
 
 const ensureGoogleKeyStorageConsent = async () => {
@@ -186,6 +196,25 @@ const ensureGoogleKeyStorageConsent = async () => {
     }
     if (!accepted) {
         localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+    }
+    return accepted;
+};
+
+const ensureGeminiKeyStorageConsent = async () => {
+    const consent = getGeminiStorageConsent();
+    if (consent === 'accepted') return true;
+
+    const accepted = await showAppConfirm(
+        'Allow this app to use browser cookies/local storage to save your encrypted Gemini API key on this device?',
+        { title: 'Storage Permission', confirmText: 'Allow' }
+    );
+    if (accepted) {
+        localStorage.setItem(GEMINI_KEY_CONSENT_KEY, 'accepted');
+    } else {
+        localStorage.removeItem(GEMINI_KEY_CONSENT_KEY);
+    }
+    if (!accepted) {
+        localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
     }
     return accepted;
 };
@@ -227,6 +256,27 @@ const persistGoogleKeyIfAllowed = async () => {
         localStorage.setItem(GOOGLE_KEY_STORAGE_KEY, encrypted);
     } catch (err) {
         console.error('Failed to store Google key:', err);
+    }
+};
+
+const persistGeminiKeyIfAllowed = async () => {
+    if (!geminiApiKeyInput) return;
+    const keyValue = getGeminiApiKey();
+
+    if (!keyValue) {
+        localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+        return;
+    }
+
+    if (!isGeminiSelected()) return;
+    const allowed = await ensureGeminiKeyStorageConsent();
+    if (!allowed) return;
+
+    try {
+        const encrypted = encodeForStorage(keyValue);
+        localStorage.setItem(GEMINI_KEY_STORAGE_KEY, encrypted);
+    } catch (err) {
+        console.error('Failed to store Gemini key:', err);
     }
 };
 
@@ -277,6 +327,19 @@ const loadUserPreferences = async () => {
         } catch (err) {
             console.warn('Failed to decode stored Google key:', err);
             localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
+        }
+    }
+
+    if (getGeminiStorageConsent() === 'accepted') {
+        try {
+            const encrypted = localStorage.getItem(GEMINI_KEY_STORAGE_KEY);
+            if (encrypted) {
+                const decrypted = decodeFromStorage(encrypted);
+                if (decrypted && geminiApiKeyInput) geminiApiKeyInput.value = decrypted;
+            }
+        } catch (err) {
+            console.warn('Failed to decode stored Gemini key:', err);
+            localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
         }
     }
 

@@ -10,6 +10,12 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+transporter.verify().then(() => {
+    console.log('✅ SMTP transporter ready');
+}).catch(err => {
+    console.error('❌ SMTP transporter verify failed:', err.message);
+});
+
 exports.sendOTP = async (to, code) => {
     const html = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
@@ -29,14 +35,22 @@ exports.sendOTP = async (to, code) => {
     });
 };
 
-exports.sendResults = async (to, downloadUrl) => {
+exports.sendResults = async (to, downloadUrl, format = 'zip') => {
+    const isPdf = format === 'pdf';
+    const btnLabel = isPdf ? 'Open Results (PDF-ready)' : 'Download Results (.zip)';
+    const description = isPdf
+        ? 'Your files have been processed. Open the link below and use "Print → Save as PDF" to save your results.'
+        : 'Your files have been processed. Download the results using the link below.';
+
     const html = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
         <h2 style="color: #1f2937; margin: 0 0 8px;">Your OCR Results are Ready</h2>
-        <p style="color: #6b7280; margin: 0 0 24px; font-size: 14px;">Your files have been processed. Download the results using the link below.</p>
-        <div style="text-align: center; margin-bottom: 24px;">
-            <a href="${downloadUrl}" style="display: inline-block; padding: 12px 32px; background: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Download Results (.zip)</a>
+        <p style="color: #6b7280; margin: 0 0 24px; font-size: 14px;">${description}</p>
+        <div style="text-align: center; margin-bottom: 16px;">
+            <a href="${downloadUrl}" style="display: inline-block; padding: 12px 32px; background: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">${btnLabel}</a>
         </div>
+        <p style="color: #6b7280; font-size: 12px; margin: 0 0 4px;">If the button above doesn't work, copy and paste this link into your browser:</p>
+        <p style="font-size: 11px; margin: 0 0 16px; word-break: break-all;"><a href="${downloadUrl}" style="color: #3b82f6;">${downloadUrl}</a></p>
         <p style="color: #9ca3af; font-size: 12px; margin: 0;">This link expires in 7 days. Sent from OCR Magic.</p>
     </div>`;
 

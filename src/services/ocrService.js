@@ -3,6 +3,7 @@ const { cleanText } = require('../utils/textUtils');
 const tesseractEngine = require('./engines/tesseract');
 const googleVisionEngine = require('./engines/googleVision');
 const openRouterEngine = require('./engines/openRouter');
+const geminiEngine = require('./engines/geminiFlash');
 const { preprocessImageWithSteps, advancedPreprocessWithSteps, clearTempFolder } = require('./preprocessing');
 
 const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, options = {}) => {
@@ -11,10 +12,12 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     const openRouterApiKey = options.openRouterApiKey || '';
     const openRouterOutputFormat = options.openRouterOutputFormat || 'plain';
     const openRouterCustomModel = options.openRouterCustomModel || '';
+    const geminiApiKey = options.geminiApiKey || '';
     const customPrompt = options.customPrompt || '';
     const skipPreprocessing = !!options.skipPreprocessing;
     const useTesseract = engine === 'tesseract';
     const useGoogleVision = engine === 'google-vision';
+    const useGemini = engine === 'gemini-flash';
     const useOpenRouter = openRouterEngine.isOpenRouterEngine(engine);
     let textResult = '';
 
@@ -33,6 +36,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
             if (useGoogleVision) {
                 console.log('🔍 Running OCR with Google Vision API...');
                 text = await googleVisionEngine.extractText(image, lang, googleApiKey);
+            } else if (useGemini) {
+                console.log('🔍 Running OCR with Gemini Flash...');
+                text = await geminiEngine.extractText(image, 'image/png', lang, geminiApiKey, customPrompt);
             } else if (useOpenRouter) {
                 console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
                 text = await openRouterEngine.extractText(image, 'image/png', lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel, customPrompt);
@@ -56,6 +62,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
         if (useGoogleVision) {
             console.log('🔍 Running OCR with Google Vision API...');
             textResult = await googleVisionEngine.extractText(filePath, lang, googleApiKey);
+        } else if (useGemini) {
+            console.log('🔍 Running OCR with Gemini Flash...');
+            textResult = await geminiEngine.extractText(filePath, mimetype, lang, geminiApiKey, customPrompt);
         } else if (useOpenRouter) {
             console.log(`🔍 Running OCR with OpenRouter (${engine === 'openrouter-custom' ? openRouterCustomModel : engine})...`);
             textResult = await openRouterEngine.extractText(filePath, mimetype, lang, openRouterApiKey, openRouterOutputFormat, engine, openRouterCustomModel, customPrompt);

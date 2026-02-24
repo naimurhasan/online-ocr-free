@@ -1245,6 +1245,13 @@ select,
     margin-top: 0.75rem;
 }
 
+.format-toggle-btn.active {
+    border-color: var(--accent-color) !important;
+    background: var(--accent-color) !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
 .btn-spinner {
     font-size: 1rem;
 }

@@ -505,6 +505,100 @@ const downloadAllZip = async () => {
     }
 };
 
+const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+const downloadPdf = async () => {
+    const filesToExport = collectDoneFilesForExport();
+    if (filesToExport.length === 0) return;
+    closeExportModal();
+
+    const isAiEngine = isOpenRouterSelected() || isGeminiSelected();
+
+    try {
+        downloadAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+        downloadAllBtn.disabled = true;
+
+        let htmlContent = '';
+
+        if (isAiEngine && isOpenRouterSelected()) {
+            const combinedText = filesToExport
+                .map(item => `===== ${item.filename} =====\n${item.text}`)
+                .join('\n\n');
+
+            const response = await fetch('/api/format-for-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: combinedText,
+                    engine: ocrEngineSelect.value,
+                    openRouterApiKey: getOpenRouterApiKey(),
+                    openRouterCustomModel: openRouterCustomModelInput?.value?.trim() || '',
+                    lang: languageSelect.value
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to format text for PDF');
+            }
+
+            const data = await response.json();
+            htmlContent = data.html;
+        } else {
+            const sections = filesToExport.map(item => {
+                const name = escapeHtml(item.filename);
+                const text = escapeHtml(item.text);
+                return `<h2 style="color:#333; border-bottom:1px solid #ccc; padding-bottom:4px; margin-top:24px;">${name}</h2>\n<pre style="white-space:pre-wrap; word-wrap:break-word; font-family:'Noto Sans Bengali','Noto Sans',sans-serif; font-size:12px; line-height:1.6;">${text}</pre>`;
+            });
+            htmlContent = sections.join('\n<div style="page-break-after:always;"></div>\n');
+        }
+
+        const printWin = window.open('', '_blank');
+        if (!printWin) {
+            throw new Error('Pop-up blocked. Please allow pop-ups for this site to export PDF.');
+        }
+
+        printWin.document.write(`<!DOCTYPE html><html><head>
+<meta charset="utf-8"><title>OCR Results</title>
+<style>
+  body { margin: 0; padding: 40px; font-family: 'Noto Sans Bengali', 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 1.8; color: #000; background: #fff; }
+  h1, h2 { color: #333; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 12px; line-height: 1.6; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+  @media print { body { padding: 20px; } }
+</style>
+</head><body>${htmlContent}</body></html>`);
+        printWin.document.close();
+
+        showToast('Use "Save as PDF" in the print dialog to download your PDF.', 5000);
+
+        const triggerPrint = () => {
+            setTimeout(() => {
+                printWin.focus();
+                printWin.print();
+            }, 300);
+        };
+
+        if (printWin.document.readyState === 'complete') {
+            triggerPrint();
+        } else {
+            printWin.onload = triggerPrint;
+        }
+
+    } catch (err) {
+        console.error('PDF export error:', err);
+        await showAppAlert(err.message || 'Failed to generate PDF', { title: 'Export Error' });
+    } finally {
+        downloadAllBtn.innerHTML = '<i class="fas fa-file-export"></i> Export';
+        downloadAllBtn.disabled = false;
+    }
+};
+
 // ── Utilities ──
 
 const showToast = (message, duration = 2500) => {

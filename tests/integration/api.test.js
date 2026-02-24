@@ -62,9 +62,11 @@ beforeAll(() => {
     app.post('/api/ocr', upload.single('file'), ocrController.processFile);
     app.post('/api/ocr/batch', upload.array('files'), ocrController.processBatch);
     app.post('/api/download-zip', ocrController.downloadZip);
+    app.post('/api/format-for-pdf', ocrController.formatForPdf);
     app.post('/api/otp/send', emailController.sendOtp);
     app.post('/api/otp/verify', emailController.verifyOtp);
     app.post('/api/job/create', upload.array('files'), emailController.createJob);
+    app.get('/api/job/active', emailController.getActiveJob);
     app.get('/api/job/:id/status', emailController.getJobStatus);
 });
 
@@ -172,6 +174,36 @@ describe('POST /api/download-zip', () => {
 
         expect(res.status).toBe(200);
         expect(res.headers['content-type']).toMatch(/zip|octet-stream/);
+    });
+});
+
+describe('POST /api/format-for-pdf', () => {
+    test('returns 400 when no text provided', async () => {
+        const res = await request(app)
+            .post('/api/format-for-pdf')
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('No text provided for formatting');
+    });
+
+    test('returns 400 when no API key provided', async () => {
+        delete process.env.OPENROUTER_API_KEY;
+        const res = await request(app)
+            .post('/api/format-for-pdf')
+            .send({ text: 'Hello world', engine: 'gemma-openrouter-free' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('OpenRouter API key is required for AI formatting');
+    });
+
+    test('returns 400 for non-OpenRouter engine', async () => {
+        const res = await request(app)
+            .post('/api/format-for-pdf')
+            .send({ text: 'Hello', engine: 'tesseract', openRouterApiKey: 'key' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid engine for AI formatting');
     });
 });
 
@@ -286,6 +318,43 @@ describe('POST /api/otp/verify', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
+    });
+});
+
+describe('GET /api/job/active', () => {
+    const { db } = require('../../src/utils/supabaseClient');
+
+    beforeEach(() => {
+        db.query.mockReset();
+    });
+
+    test('returns 400 when no email provided', async () => {
+        const res = await request(app).get('/api/job/active');
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Email is required.');
+    });
+
+    test('returns active: false when no active job', async () => {
+        db.query.mockResolvedValue({ rows: [] });
+
+        const res = await request(app).get('/api/job/active?email=test@example.com');
+
+        expect(res.status).toBe(200);
+        expect(res.body.active).toBe(false);
+    });
+
+    test('returns active job when one exists', async () => {
+        db.query.mockResolvedValue({
+            rows: [{ id: 5, status: 'processing', file_count: 2, files_processed: 1, error: null, created_at: '2024-01-01' }]
+        });
+
+        const res = await request(app).get('/api/job/active?email=test@example.com');
+
+        expect(res.status).toBe(200);
+        expect(res.body.active).toBe(true);
+        expect(res.body.job.id).toBe(5);
+        expect(res.body.job.status).toBe('processing');
     });
 });
 

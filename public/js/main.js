@@ -8,6 +8,7 @@ const init = async () => {
     updateEngineUI();
     updateOverallProgressUI();
     updateGlobalButtons();
+    checkActiveJob();
 };
 
 const setupEventListeners = () => {
@@ -84,7 +85,10 @@ const setupEventListeners = () => {
     cancelExportBtn.addEventListener('click', closeExportModal);
     exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
     exportZipBtn.addEventListener('click', downloadAllZip);
-    emailProcessBtn.addEventListener('click', openEmailOtpModal);
+    exportPdfBtn.addEventListener('click', downloadPdf);
+    emailProcessBtn.addEventListener('click', openEmailOtpModalSafe);
+    if (emailFormatZipBtn) emailFormatZipBtn.addEventListener('click', () => setEmailFormat('zip'));
+    if (emailFormatPdfBtn) emailFormatPdfBtn.addEventListener('click', () => setEmailFormat('pdf'));
     sendOtpBtn.addEventListener('click', handleSendOtp);
     verifyAndSendBtn.addEventListener('click', handleVerifyAndSubmitJob);
     resendOtpBtn.addEventListener('click', handleSendOtp);
@@ -136,6 +140,9 @@ const setupEventListeners = () => {
         if (isGoogleVisionSelected()) {
             await ensureGoogleKeyStorageConsent();
         }
+        if (isGeminiSelected()) {
+            await ensureGeminiKeyStorageConsent();
+        }
         if (isOpenRouterSelected()) {
             await ensureOpenRouterKeyStorageConsent();
         }
@@ -148,6 +155,12 @@ const setupEventListeners = () => {
         await persistGoogleKeyIfAllowed();
         updateGlobalButtons();
     });
+    if (geminiApiKeyInput) {
+        geminiApiKeyInput.addEventListener('input', async () => {
+            await persistGeminiKeyIfAllowed();
+            updateGlobalButtons();
+        });
+    }
     openRouterApiKeyInput.addEventListener('input', async () => {
         await persistOpenRouterKeyIfAllowed();
         updateGlobalButtons();
@@ -242,6 +255,8 @@ const setupEventListeners = () => {
             }
         }
 
+        columnsModal.classList.add('hidden');
+
         const splitters = document.querySelectorAll('.column-splitter');
         splitters.forEach(s => s.style.pointerEvents = 'none');
 
@@ -262,6 +277,10 @@ const handleProcessClick = () => {
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
     if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
         showAppAlert('Please enter your Google Vision API key first.', { title: 'Google Vision API Key' });
+        return;
+    }
+    if (isGeminiSelected() && !getGeminiApiKey()) {
+        showAppAlert('Please enter your Gemini API key first.', { title: 'Gemini API Key' });
         return;
     }
     if (isOpenRouterSelected() && !getOpenRouterApiKey()) {

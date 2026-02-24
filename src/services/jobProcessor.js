@@ -5,7 +5,7 @@ const { db, storage } = require('../utils/supabaseClient');
 const { extractText } = require('./ocrService');
 const { sendResults } = require('../utils/emailService');
 
-const processNextJob = async (buildZip) => {
+const processNextJob = async (buildZip, buildPdf) => {
     const { rows: jobs } = await db.query(
         `UPDATE ocr_jobs SET status = 'processing', started_at = NOW(), updated_at = NOW()
          WHERE id = (SELECT id FROM ocr_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1)
@@ -77,22 +77,40 @@ const processNextJob = async (buildZip) => {
             }
         }
 
-        const zipBuffer = await buildZip(results);
+        const wantPdf = job.options?.outputFormat === 'pdf';
+        let resultBuffer, resultPath, contentType, formatLabel;
 
-        const resultPath = `${job.id}/ocr_results.zip`;
+        if (wantPdf && buildPdf) {
+            resultBuffer = buildPdf(results);
+            resultPath = `${job.id}/ocr_results.html`;
+            contentType = 'text/html';
+            formatLabel = 'pdf';
+        } else {
+            resultBuffer = await buildZip(results);
+            resultPath = `${job.id}/ocr_results.zip`;
+            contentType = 'application/zip';
+            formatLabel = 'zip';
+        }
+
         const { error: uploadErr } = await storage
             .from('ocr-results')
-            .upload(resultPath, zipBuffer, { contentType: 'application/zip' });
+            .upload(resultPath, resultBuffer, { contentType });
 
-        if (uploadErr) throw new Error(`Failed to upload result ZIP: ${uploadErr.message}`);
+        if (uploadErr) throw new Error(`Failed to upload results: ${uploadErr.message}`);
 
-        const { data: signedData, error: signErr } = await storage
-            .from('ocr-results')
-            .createSignedUrl(resultPath, 7 * 24 * 60 * 60);
+        let downloadUrl;
+        if (wantPdf) {
+            const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+            downloadUrl = `${appUrl}/api/job/${job.id}/pdf`;
+        } else {
+            const { data: signedData, error: signErr } = await storage
+                .from('ocr-results')
+                .createSignedUrl(resultPath, 7 * 24 * 60 * 60);
+            if (signErr) throw new Error(`Failed to create download link: ${signErr.message}`);
+            downloadUrl = signedData.signedUrl;
+        }
 
-        if (signErr) throw new Error(`Failed to create download link: ${signErr.message}`);
-
-        await sendResults(job.email, signedData.signedUrl);
+        await sendResults(job.email, downloadUrl, formatLabel);
 
         await db.query(
             `UPDATE ocr_jobs SET status = 'done', files_processed = $1, result_path = $2,

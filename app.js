@@ -64,6 +64,7 @@ app.get('/api/config', (req, res) => {
 app.post('/api/ocr', ocrLimiter, upload.single('file'), ocrController.processFile);
 app.post('/api/ocr/batch', ocrLimiter, upload.array('files'), ocrController.processBatch);
 app.post('/api/download-zip', ocrController.downloadZip);
+app.post('/api/format-for-pdf', ocrController.formatForPdf);
 
 app.post('/api/otp/send', emailController.sendOtp);
 app.post('/api/otp/verify', emailController.verifyOtp);
@@ -76,7 +77,9 @@ app.post('/api/job/create', (req, res, next) => {
     next();
   });
 }, emailController.createJob);
+app.get('/api/job/active', emailController.getActiveJob);
 app.get('/api/job/:id/status', emailController.getJobStatus);
+app.get('/api/job/:id/pdf', emailController.getJobPdf);
 
 const jobWorker = require('./src/services/jobWorker');
 

@@ -34,9 +34,18 @@ exports.sendOtp = async (req, res) => {
             [email, code, expiresAt]
         );
 
-        if (isDev) console.log(`[DEV] OTP for ${email}: ${code}`);
-        else await sendOTP(email, code);
-        res.json({ success: true });
+        if (isDev) {
+            console.log(`[DEV] OTP for ${email}: ${code}`);
+            res.json({ success: true });
+        } else {
+            // Send email in background so response is immediate; errors are logged
+            res.json({ success: true });
+            try {
+                await sendOTP(email, code);
+            } catch (emailErr) {
+                console.error('OTP email send error:', emailErr);
+            }
+        }
     } catch (err) {
         console.error('OTP send error:', err);
         res.status(500).json({ error: 'Failed to send verification code.' });
@@ -108,11 +117,13 @@ exports.createJob = async (req, res) => {
 
         const options = {
             googleApiKey: (req.body.googleApiKey || '').trim(),
+            geminiApiKey: (req.body.geminiApiKey || '').trim(),
             openRouterApiKey: (req.body.openRouterApiKey || '').trim(),
             openRouterOutputFormat: (req.body.openRouterOutputFormat || 'plain').trim(),
             openRouterCustomModel: (req.body.openRouterCustomModel || '').trim(),
             customPrompt: (req.body.customPrompt || '').trim(),
             skipPreprocessing: req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true,
+            outputFormat: (req.body.outputFormat || 'zip').trim(),
         };
 
         const { rows: jobRows } = await db.query(
@@ -172,6 +183,27 @@ exports.createJob = async (req, res) => {
     }
 };
 
+exports.getActiveJob = async (req, res) => {
+    try {
+        const email = (req.query.email || '').trim();
+        if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+        const { rows } = await db.query(
+            `SELECT id, status, file_count, files_processed, error, created_at
+             FROM ocr_jobs
+             WHERE email = $1 AND status IN ('pending', 'uploading', 'processing')
+             ORDER BY created_at DESC LIMIT 1`,
+            [email]
+        );
+
+        if (rows.length === 0) return res.json({ active: false });
+        res.json({ active: true, job: rows[0] });
+    } catch (err) {
+        console.error('Active job check error:', err);
+        res.status(500).json({ error: 'Failed to check active jobs.' });
+    }
+};
+
 exports.getJobStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -187,5 +219,39 @@ exports.getJobStatus = async (req, res) => {
     } catch (err) {
         console.error('Job status error:', err);
         res.status(500).json({ error: 'Failed to get job status.' });
+    }
+};
+
+exports.getJobPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Job ID required.' });
+
+        const { rows } = await db.query(
+            "SELECT result_path, status FROM ocr_jobs WHERE id = $1",
+            [id]
+        );
+
+        if (rows.length === 0) return res.status(404).send('Job not found.');
+        const job = rows[0];
+
+        if (job.status !== 'done') return res.status(404).send('Results not ready yet.');
+        if (!job.result_path || !job.result_path.endsWith('.html')) {
+            return res.status(404).send('No PDF result for this job.');
+        }
+
+        const { data: fileData, error: dlErr } = await storage
+            .from('ocr-results')
+            .download(job.result_path);
+
+        if (dlErr) return res.status(500).send('Failed to load results.');
+
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.send(buffer);
+    } catch (err) {
+        console.error('Job PDF serve error:', err);
+        res.status(500).send('Failed to serve results.');
     }
 };

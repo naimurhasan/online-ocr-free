@@ -24,12 +24,23 @@ const hideEmailError = () => {
     emailError.classList.add('hidden');
 };
 
+let emailOutputFormat = 'zip';
+
+const setEmailFormat = (format) => {
+    emailOutputFormat = format;
+    if (emailFormatZipBtn && emailFormatPdfBtn) {
+        emailFormatZipBtn.classList.toggle('active', format === 'zip');
+        emailFormatPdfBtn.classList.toggle('active', format === 'pdf');
+    }
+};
+
 const openEmailOtpModal = () => {
     closeReviewModal();
     hideEmailError();
     emailStep1.classList.remove('hidden');
     emailStep2.classList.add('hidden');
     otpInput.value = '';
+    setEmailFormat('zip');
     const savedEmail = sessionStorage.getItem('ocr_email');
     if (savedEmail) emailInput.value = savedEmail;
     emailOtpModal.classList.remove('hidden');
@@ -143,9 +154,13 @@ const handleVerifyAndSubmitJob = async () => {
         formData.append('email', email);
         formData.append('lang', languageSelect.value);
         formData.append('engine', ocrEngineSelect.value);
+        formData.append('outputFormat', emailOutputFormat);
 
         if (googleVisionApiKeyInput?.value) {
             formData.append('googleApiKey', googleVisionApiKeyInput.value.trim());
+        }
+        if (geminiApiKeyInput?.value) {
+            formData.append('geminiApiKey', geminiApiKeyInput.value.trim());
         }
         if (openRouterApiKeyInput?.value) {
             formData.append('openRouterApiKey', openRouterApiKeyInput.value.trim());
@@ -193,6 +208,7 @@ const handleVerifyAndSubmitJob = async () => {
         }
 
         closeEmailOtpModal();
+        activeJobId = jobData.jobId;
         showToast(`Job submitted! Results will be emailed to ${email}. You can close the browser.`, 5000);
         startJobProgressPolling(jobData.jobId, email);
     } catch {
@@ -230,9 +246,11 @@ const startJobProgressPolling = (jobId, email) => {
                 overallProgressCurrent.textContent = `Done! Results emailed to ${email}`;
                 overallProgressFill.style.width = '100%';
                 showToast(`OCR complete — results emailed to ${email}`, 4000);
+                activeJobId = null;
                 stopJobProgressPolling();
             } else if (job.status === 'failed') {
                 overallProgressCurrent.textContent = `Job failed: ${job.error || 'Unknown error'}`;
+                activeJobId = null;
                 stopJobProgressPolling();
             }
         } catch { /* network error, keep polling */ }
@@ -244,4 +262,31 @@ const stopJobProgressPolling = () => {
         clearInterval(jobPollTimerId);
         jobPollTimerId = null;
     }
+};
+
+let activeJobId = null;
+
+const checkActiveJob = async () => {
+    const email = sessionStorage.getItem('ocr_email');
+    if (!email) return;
+
+    try {
+        const resp = await fetch(`/api/job/active?email=${encodeURIComponent(email)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        if (data.active && data.job) {
+            activeJobId = data.job.id;
+            startJobProgressPolling(data.job.id, email);
+        }
+    } catch { /* silent */ }
+};
+
+const openEmailOtpModalSafe = () => {
+    if (activeJobId) {
+        const email = sessionStorage.getItem('ocr_email') || '';
+        showToast(`A job is already in progress for ${email}. Please wait for it to finish.`, 4000);
+        return;
+    }
+    openEmailOtpModal();
 };
