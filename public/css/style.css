@@ -1135,6 +1135,154 @@ select,
     font-weight: 400;
 }
 
+.export-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--accent-color);
+    font-size: 0.8rem;
+    margin: 0.25rem 0;
+}
+
+.export-divider::before,
+.export-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+/* Email OTP Modal */
+
+.input-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 0.4rem;
+}
+
+.input-field {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.input-field::placeholder {
+    color: var(--accent-color);
+    opacity: 0.6;
+}
+
+.otp-input {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.email-format-options {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.email-format-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+.email-format-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.email-format-option input[type="radio"] {
+    accent-color: var(--primary-color);
+    margin: 0;
+}
+
+.email-format-option i {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+.otp-sent-msg {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    margin-bottom: 1.25rem;
+}
+
+.otp-sent-msg strong {
+    color: var(--text-color);
+}
+
+.email-error {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #ef4444;
+    margin-top: 0.75rem;
+}
+
+.btn-spinner {
+    font-size: 1rem;
+}
+
+.review-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.review-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.btn-email-process {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.2rem;
+    border: 1.5px solid #7c3aed;
+    color: #7c3aed;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-email-process:hover {
+    background: #7c3aed;
+    color: #fff;
+}
+
 .btn-text-only {
     width: 100%;
     border: none;

@@ -26,7 +26,10 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+});
 
 // Routes
 app.get('/', (req, res) => {
@@ -35,6 +38,7 @@ app.get('/', (req, res) => {
 
 // Import controllers
 const ocrController = require('./src/controllers/ocrController');
+const emailController = require('./src/controllers/emailController');
 
 // API Endpoints
 app.get('/api/config', (req, res) => {
@@ -47,7 +51,25 @@ app.post('/api/ocr', upload.single('file'), ocrController.processFile);
 app.post('/api/ocr/batch', upload.array('files'), ocrController.processBatch);
 app.post('/api/download-zip', ocrController.downloadZip);
 
+app.post('/api/otp/send', emailController.sendOtp);
+app.post('/api/otp/verify', emailController.verifyOtp);
+app.post('/api/job/create', (req, res, next) => {
+  upload.array('files')(req, res, (err) => {
+    if (err) {
+      console.error('Multer upload error:', err);
+      return res.status(400).json({ error: err.message || 'File upload failed.' });
+    }
+    next();
+  });
+}, emailController.createJob);
+app.get('/api/job/:id/status', emailController.getJobStatus);
 
-app.listen(port, () => {
+// Start job worker
+const jobWorker = require('./src/services/jobWorker');
+
+app.listen(port, async () => {
   console.log(`Server is running at http://localhost:${port}`);
+  await jobWorker.recoverStuckJobs();
+  jobWorker.start();
+  jobWorker.startCleanupSchedule();
 });

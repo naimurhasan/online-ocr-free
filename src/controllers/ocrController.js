@@ -1,4 +1,3 @@
-const { sendEmail } = require('../utils/emailService');
 const { extractText } = require('../services/ocrService');
 const { deleteFile } = require('../utils/fileUtils');
 
@@ -130,8 +129,6 @@ async function processBatchFiles(files, langKey, email, options = {}) {
             deleteFile(file.path);
         }
     }
-    // ... email logic ... (omitted for brevity, assume it's same)
-    if (email && results.length > 0) {
-        await sendEmail(email, results);
-    }
+    // Note: email delivery is now handled by the job worker system.
+    // This batch endpoint is kept for backward compatibility.
 }

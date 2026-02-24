@@ -65,6 +65,18 @@ const exportModal = document.getElementById('exportModal');
 const cancelExportBtn = document.getElementById('cancelExportBtn');
 const exportCombinedBtn = document.getElementById('exportCombinedBtn');
 const exportZipBtn = document.getElementById('exportZipBtn');
+const emailProcessBtn = document.getElementById('emailProcessBtn');
+const emailOtpModal = document.getElementById('emailOtpModal');
+const emailInput = document.getElementById('emailInput');
+const sendOtpBtn = document.getElementById('sendOtpBtn');
+const emailStep1 = document.getElementById('emailStep1');
+const emailStep2 = document.getElementById('emailStep2');
+const otpSentEmail = document.getElementById('otpSentEmail');
+const otpInput = document.getElementById('otpInput');
+const verifyAndSendBtn = document.getElementById('verifyAndSendBtn');
+const resendOtpBtn = document.getElementById('resendOtpBtn');
+const emailError = document.getElementById('emailError');
+const cancelEmailBtn = document.getElementById('cancelEmailBtn');
 const appAlertModal = document.getElementById('appAlertModal');
 const appAlertTitle = document.getElementById('appAlertTitle');
 const appAlertMessage = document.getElementById('appAlertMessage');
@@ -277,6 +289,11 @@ const setupEventListeners = () => {
     cancelExportBtn.addEventListener('click', closeExportModal);
     exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
     exportZipBtn.addEventListener('click', downloadAllZip);
+    emailProcessBtn.addEventListener('click', openEmailOtpModal);
+    sendOtpBtn.addEventListener('click', handleSendOtp);
+    verifyAndSendBtn.addEventListener('click', handleVerifyAndSubmitJob);
+    resendOtpBtn.addEventListener('click', handleSendOtp);
+    cancelEmailBtn.addEventListener('click', closeEmailOtpModal);
     appAlertCancelBtn.addEventListener('click', () => resolveAppAlert(false));
     appAlertConfirmBtn.addEventListener('click', () => resolveAppAlert(true));
     appAlertModal.addEventListener('click', (e) => {
@@ -832,9 +849,17 @@ const handleFileSelect = async (e) => {
     // addFilesBtn.disabled = true;
     // addFilesBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> processing...';
 
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    const skipped = [];
     for (const file of newFiles) {
-        // Just add the file, processing happens on "Start"
+        if (file.size > MAX_FILE_SIZE) {
+            skipped.push(file.name);
+            continue;
+        }
         addFileToState(file, file.name);
+    }
+    if (skipped.length > 0) {
+        showAppAlert(`${skipped.length} file${skipped.length > 1 ? 's' : ''} skipped (over 50 MB limit):\n${skipped.join(', ')}`, { title: 'File Too Large' });
     }
 
     renderFileList();
@@ -1787,6 +1812,256 @@ const openExportModal = () => {
 
 const closeExportModal = () => {
     exportModal.classList.add('hidden');
+};
+
+// --- Email OTP Modal (Process & Email Job) ---
+
+const setEmailBtnLoading = (btn, loading) => {
+    const text = btn.querySelector('.btn-text');
+    const spinner = btn.querySelector('.btn-spinner');
+    if (loading) {
+        text.classList.add('hidden');
+        spinner.classList.remove('hidden');
+        btn.disabled = true;
+    } else {
+        text.classList.remove('hidden');
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+    }
+};
+
+const showEmailError = (msg) => {
+    emailError.textContent = msg;
+    emailError.classList.remove('hidden');
+};
+
+const hideEmailError = () => {
+    emailError.textContent = '';
+    emailError.classList.add('hidden');
+};
+
+const openEmailOtpModal = () => {
+    closeReviewModal();
+    hideEmailError();
+    emailStep1.classList.remove('hidden');
+    emailStep2.classList.add('hidden');
+    otpInput.value = '';
+    const savedEmail = sessionStorage.getItem('ocr_email');
+    if (savedEmail) emailInput.value = savedEmail;
+    emailOtpModal.classList.remove('hidden');
+};
+
+const closeEmailOtpModal = () => {
+    emailOtpModal.classList.add('hidden');
+    setEmailBtnLoading(sendOtpBtn, false);
+    setEmailBtnLoading(verifyAndSendBtn, false);
+    clearResendCooldown();
+};
+
+let resendCooldownTimer = null;
+const startResendCooldown = (seconds) => {
+    resendOtpBtn.disabled = true;
+    let remaining = seconds;
+    const tick = () => {
+        resendOtpBtn.textContent = `Resend Code (${remaining}s)`;
+        if (remaining <= 0) {
+            clearResendCooldown();
+            return;
+        }
+        remaining--;
+        resendCooldownTimer = setTimeout(tick, 1000);
+    };
+    tick();
+};
+
+const clearResendCooldown = () => {
+    if (resendCooldownTimer) {
+        clearTimeout(resendCooldownTimer);
+        resendCooldownTimer = null;
+    }
+    resendOtpBtn.disabled = false;
+    resendOtpBtn.textContent = 'Resend Code';
+};
+
+const handleSendOtp = async () => {
+    hideEmailError();
+    const email = emailInput.value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showEmailError('Please enter a valid email address.');
+        return;
+    }
+
+    setEmailBtnLoading(sendOtpBtn, true);
+    resendOtpBtn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            showEmailError(data.error || 'Failed to send code.');
+            setEmailBtnLoading(sendOtpBtn, false);
+            resendOtpBtn.disabled = false;
+            return;
+        }
+
+        sessionStorage.setItem('ocr_email', email);
+        otpSentEmail.textContent = email;
+        emailStep1.classList.add('hidden');
+        emailStep2.classList.remove('hidden');
+        otpInput.value = '';
+        otpInput.focus();
+        startResendCooldown(60);
+    } catch {
+        showEmailError('Network error. Please try again.');
+        resendOtpBtn.disabled = false;
+    } finally {
+        setEmailBtnLoading(sendOtpBtn, false);
+    }
+};
+
+const handleVerifyAndSubmitJob = async () => {
+    hideEmailError();
+    const email = emailInput.value.trim();
+    const otp = otpInput.value.trim();
+
+    if (!otp || otp.length !== 6) {
+        showEmailError('Please enter the 6-digit code.');
+        return;
+    }
+
+    if (filesData.length === 0) {
+        showEmailError('No files to process.');
+        return;
+    }
+
+    setEmailBtnLoading(verifyAndSendBtn, true);
+
+    try {
+        // Step 1: Verify OTP first
+        const verifyResp = await fetch('/api/otp/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp }),
+        });
+        const verifyData = await verifyResp.json();
+
+        if (!verifyResp.ok) {
+            showEmailError(verifyData.error || 'Invalid or expired code.');
+            setEmailBtnLoading(verifyAndSendBtn, false);
+            return;
+        }
+
+        // Step 2: Upload files and create job
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('lang', languageSelect.value);
+        formData.append('engine', ocrEngineSelect.value);
+
+        if (googleVisionApiKeyInput?.value) {
+            formData.append('googleApiKey', googleVisionApiKeyInput.value.trim());
+        }
+        if (openRouterApiKeyInput?.value) {
+            formData.append('openRouterApiKey', openRouterApiKeyInput.value.trim());
+        }
+        if (openRouterOutputFormatSelect?.value) {
+            formData.append('openRouterOutputFormat', openRouterOutputFormatSelect.value);
+        }
+        if (openRouterCustomModelInput?.value) {
+            formData.append('openRouterCustomModel', openRouterCustomModelInput.value.trim());
+        }
+        if (advancedSettings.customPrompt) {
+            formData.append('customPrompt', advancedSettings.customPrompt);
+        }
+        formData.append('skipPreprocessing', advancedSettings.skipPreprocessing);
+
+        for (const fileObj of filesData) {
+            if (!fileObj.file) {
+                console.warn('Missing file blob for:', fileObj.name);
+                continue;
+            }
+            formData.append('files', fileObj.file, fileObj.name);
+        }
+
+        console.log(`Submitting job: ${filesData.length} files, formData entries:`, [...formData.entries()].filter(([k]) => k === 'files').length);
+
+        const jobResp = await fetch('/api/job/create', {
+            method: 'POST',
+            body: formData,
+        });
+
+        let jobData;
+        try {
+            jobData = await jobResp.json();
+        } catch {
+            showEmailError('Server error. Check console for details.');
+            console.error('Job create response:', jobResp.status, await jobResp.text().catch(() => ''));
+            setEmailBtnLoading(verifyAndSendBtn, false);
+            return;
+        }
+
+        if (!jobResp.ok) {
+            showEmailError(jobData.error || 'Failed to submit job.');
+            setEmailBtnLoading(verifyAndSendBtn, false);
+            return;
+        }
+
+        closeEmailOtpModal();
+        showToast(`Job submitted! Results will be emailed to ${email}. You can close the browser.`, 5000);
+        startJobProgressPolling(jobData.jobId, email);
+    } catch {
+        showEmailError('Network error. Please try again.');
+    } finally {
+        setEmailBtnLoading(verifyAndSendBtn, false);
+    }
+};
+
+let jobPollTimerId = null;
+
+const startJobProgressPolling = (jobId, email) => {
+    stopJobProgressPolling();
+    overallProgress.classList.remove('hidden');
+    overallProgressCurrent.textContent = `Server job queued — results will be emailed to ${email}`;
+    overallProgressText.textContent = 'Overall: 0 / ?';
+    overallEtaText.textContent = '';
+    overallProgressFill.style.width = '0%';
+
+    jobPollTimerId = setInterval(async () => {
+        try {
+            const resp = await fetch(`/api/job/${jobId}/status`);
+            if (!resp.ok) return;
+            const job = await resp.json();
+
+            const pct = job.file_count > 0
+                ? Math.round((job.files_processed / job.file_count) * 100)
+                : 0;
+            overallProgressText.textContent = `Overall: ${job.files_processed} / ${job.file_count}`;
+            overallProgressFill.style.width = `${pct}%`;
+
+            if (job.status === 'processing') {
+                overallProgressCurrent.textContent = `Processing on server... (${pct}%)`;
+            } else if (job.status === 'done') {
+                overallProgressCurrent.textContent = `Done! Results emailed to ${email}`;
+                overallProgressFill.style.width = '100%';
+                showToast(`OCR complete — results emailed to ${email}`, 4000);
+                stopJobProgressPolling();
+            } else if (job.status === 'failed') {
+                overallProgressCurrent.textContent = `Job failed: ${job.error || 'Unknown error'}`;
+                stopJobProgressPolling();
+            }
+        } catch { /* network error, keep polling */ }
+    }, 3000);
+};
+
+const stopJobProgressPolling = () => {
+    if (jobPollTimerId) {
+        clearInterval(jobPollTimerId);
+        jobPollTimerId = null;
+    }
 };
 
 const startProgressTimer = () => {

@@ -285,9 +285,14 @@
                     <strong id="reviewConcurrency">-</strong>
                 </div>
             </div>
-            <div class="modal-actions" style="margin-top: 1.5rem;">
-                <button id="cancelReviewBtn" class="btn-secondary">Cancel</button>
-                <button id="confirmReviewBtn" class="btn-primary">Start All</button>
+            <div class="review-actions" style="margin-top: 1.5rem;">
+                <button id="emailProcessBtn" class="btn-email-process">
+                    <i class="fas fa-envelope"></i> Email me when done
+                </button>
+                <div class="review-actions-row">
+                    <button id="cancelReviewBtn" class="btn-secondary">Cancel</button>
+                    <button id="confirmReviewBtn" class="btn-primary">Start All</button>
+                </div>
             </div>
         </div>
     </div>
@@ -319,6 +324,47 @@
 
             <div style="margin-top: 1.5rem; text-align: center;">
                 <button id="cancelExportBtn" class="btn-text-only">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email OTP Modal -->
+    <div id="emailOtpModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 420px;">
+            <h3 style="text-align: center; margin-bottom: 0.25rem;"><i class="fas fa-envelope"></i> Process & Email</h3>
+            <p class="settings-file-name" style="text-align: center; margin-bottom: 1.5rem;">Files will be processed on the server. You can close the browser after submitting.</p>
+
+            <!-- Step 1: Email -->
+            <div id="emailStep1">
+                <label class="input-label" for="emailInput">Email Address</label>
+                <input type="email" id="emailInput" class="input-field" placeholder="you@example.com" autocomplete="email">
+
+                <button id="sendOtpBtn" class="btn-primary" style="width: 100%; margin-top: 1.25rem;">
+                    <span class="btn-text">Send Verification Code</span>
+                    <i class="fas fa-spinner fa-spin btn-spinner hidden"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: OTP Verify -->
+            <div id="emailStep2" class="hidden">
+                <p class="otp-sent-msg">Code sent to <strong id="otpSentEmail"></strong></p>
+                <label class="input-label" for="otpInput">Verification Code</label>
+                <input type="text" id="otpInput" class="input-field otp-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+
+                <button id="verifyAndSendBtn" class="btn-primary" style="width: 100%; margin-top: 1.25rem;">
+                    <span class="btn-text">Verify & Submit Job</span>
+                    <i class="fas fa-spinner fa-spin btn-spinner hidden"></i>
+                </button>
+
+                <div style="text-align: center; margin-top: 0.75rem;">
+                    <button id="resendOtpBtn" class="btn-text-only" style="font-size: 0.8rem;">Resend Code</button>
+                </div>
+            </div>
+
+            <p id="emailError" class="email-error hidden"></p>
+
+            <div style="margin-top: 1.25rem; text-align: center;">
+                <button id="cancelEmailBtn" class="btn-text-only">Cancel</button>
             </div>
         </div>
     </div>
