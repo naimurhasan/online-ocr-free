@@ -13,6 +13,12 @@ Thumbs.db
 uploads/
 temp/
 
+# IDE / Tool settings
+.claude/
+
+# Supabase temp
+supabase/.temp/
+
 # Logs
 *.log
 npm-debug.log*

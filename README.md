@@ -2,6 +2,21 @@
 
 OCR service for Bangla, English, and 60+ languages. Supports Tesseract (free), Google Vision API, and OpenRouter AI models.
 
+## Features
+
+- **Multiple OCR Engines** — Tesseract (free/local), Google Vision API, Gemma 3 27B, Mistral Small 3.1, or any custom OpenRouter model
+- **50+ Languages** — Bengali, English, Hindi, Arabic, Chinese, Japanese, Korean, and more. Multi-language combos supported (e.g. `eng+ben`)
+- **Batch Processing** — Queue multiple files and process them concurrently with configurable thread count
+- **PDF Support** — Multi-page PDFs with optional page range selection, converted at 300 DPI
+- **Column Splitting** — Split pages into 1–7 columns with draggable dividers for multi-column layouts
+- **Image Preprocessing** — Grayscale, sharpening, and thresholding pipelines optimized for Bangla OCR
+- **Preview Panel** — Zoom, pan, and rotate images/PDFs before processing
+- **Background Jobs via Email** — Verify email with OTP, upload files, get results as a ZIP download link
+- **Export Options** — Combined text file, ZIP archive, or copy to clipboard
+- **Custom AI Prompts** — Custom extraction prompts for OpenRouter models
+- **Bangla Text Cleaning** — Rule-based post-OCR corrections for common Bengali character misreads
+- **Dark/Light Theme** — Toggle with system preference detection
+
 ## Tech Stack
 
 - **Backend:** Node.js + Express
@@ -76,7 +91,7 @@ Open `http://localhost:3000`
 
 ### Dev Mode OTP
 
-When `NODE_ENV` is not `production` (default for local dev), OTP emails are **not sent**. The code is always `999999` and logged to the console. Set `NODE_ENV=production` in `.env` to enable real OTP emails.
+When `OCR_DEV_OTP=true` is set in `.env`, OTP emails are **not sent**. The code is always `999999` and logged to the console. Remove this variable or set it to `false` in production to enable real OTP emails.
 
 ---
 
