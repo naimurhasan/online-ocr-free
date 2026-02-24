@@ -162,6 +162,9 @@ const handleVerifyAndSubmitJob = async () => {
         if (geminiApiKeyInput?.value) {
             formData.append('geminiApiKey', geminiApiKeyInput.value.trim());
         }
+        if (geminiCustomModelInput?.value) {
+            formData.append('geminiCustomModel', geminiCustomModelInput.value.trim());
+        }
         if (openRouterApiKeyInput?.value) {
             formData.append('openRouterApiKey', openRouterApiKeyInput.value.trim());
         }

@@ -15,7 +15,8 @@ const fetchServerConfig = async () => {
 };
 
 const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'google-vision';
-const isGeminiSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemini-flash';
+const isGeminiSelected = () => ocrEngineSelect && (ocrEngineSelect.value === 'gemini-flash' || ocrEngineSelect.value === 'gemini-custom');
+const isGeminiCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemini-custom';
 const isOpenRouterSelected = () => ocrEngineSelect && (
     ocrEngineSelect.value === 'gemma-openrouter-free' ||
     ocrEngineSelect.value === 'gemma-openrouter-paid' ||
@@ -33,6 +34,7 @@ const updateEngineUI = () => {
     if (!googleVisionKeyWrap || !openRouterKeyWrap || !openRouterFormatWrap) return;
     googleVisionKeyWrap.classList.toggle('hidden', !isGoogleVisionSelected());
     if (geminiKeyWrap) geminiKeyWrap.classList.toggle('hidden', !isGeminiSelected());
+    if (geminiCustomModelWrap) geminiCustomModelWrap.classList.toggle('hidden', !isGeminiCustomSelected());
     openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterSelected());
     openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterSelected());
     if (openRouterCustomModelWrap) {
@@ -48,6 +50,9 @@ const appendOcrConfigToFormData = (formData) => {
     }
     if (isGeminiSelected()) {
         formData.append('geminiApiKey', getGeminiApiKey());
+        if (isGeminiCustomSelected() && geminiCustomModelInput) {
+            formData.append('geminiCustomModel', geminiCustomModelInput.value.trim());
+        }
     }
     if (isOpenRouterSelected()) {
         formData.append('openRouterApiKey', getOpenRouterApiKey());
@@ -69,7 +74,8 @@ const saveUserPreferences = () => {
         language: languageSelect.value,
         engine: ocrEngineSelect.value,
         openRouterOutputFormat: openRouterOutputFormatSelect?.value || 'plain',
-        openRouterCustomModel: openRouterCustomModelInput?.value || ''
+        openRouterCustomModel: openRouterCustomModelInput?.value || '',
+        geminiCustomModel: geminiCustomModelInput?.value || ''
     };
     localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
 };
@@ -149,6 +155,7 @@ const resetAllSettings = async () => {
     ocrEngineSelect.value = 'tesseract';
     if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = 'plain';
     if (openRouterCustomModelInput) openRouterCustomModelInput.value = '';
+    if (geminiCustomModelInput) geminiCustomModelInput.value = '';
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.value = '';
     if (geminiApiKeyInput) geminiApiKeyInput.value = '';
     if (openRouterApiKeyInput) openRouterApiKeyInput.value = '';
@@ -310,6 +317,7 @@ const loadUserPreferences = async () => {
             if (prefs.engine) ocrEngineSelect.value = prefs.engine;
             if (prefs.openRouterOutputFormat && openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = prefs.openRouterOutputFormat;
             if (prefs.openRouterCustomModel && openRouterCustomModelInput) openRouterCustomModelInput.value = prefs.openRouterCustomModel;
+            if (prefs.geminiCustomModel && geminiCustomModelInput) geminiCustomModelInput.value = prefs.geminiCustomModel;
         }
     } catch (err) {
         console.warn('Failed to load preferences:', err);

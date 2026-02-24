@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-preview-05-20';
 
 const MAX_CUSTOM_PROMPT_LENGTH = 2000;
 
@@ -25,10 +26,13 @@ const getLanguageLabel = (lang = 'eng') => {
         .join(', ');
 };
 
-const extractText = async (imagePath, mimeType, lang, geminiApiKey, customPrompt = '') => {
+const extractText = async (imagePath, mimeType, lang, geminiApiKey, customPrompt = '', geminiCustomModel = '') => {
     if (!geminiApiKey) {
         throw new Error('Gemini API key is required');
     }
+
+    const modelId = (geminiCustomModel || '').trim() || GEMINI_DEFAULT_MODEL;
+    const endpoint = `${GEMINI_BASE_URL}/${modelId}:generateContent`;
 
     customPrompt = (customPrompt || '').slice(0, MAX_CUSTOM_PROMPT_LENGTH);
     const safeMimeType = mimeType || 'image/png';
@@ -58,7 +62,7 @@ const extractText = async (imagePath, mimeType, lang, geminiApiKey, customPrompt
         ]
     };
 
-    const response = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(geminiApiKey)}`, {
+    const response = await fetch(`${endpoint}?key=${encodeURIComponent(geminiApiKey)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

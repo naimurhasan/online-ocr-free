@@ -81,6 +81,7 @@
                         <option value="tesseract" selected>Tesseract OCR (Free)</option>
                         <option value="google-vision">Google Vision API</option>
                         <option value="gemini-flash">Gemini Flash (Google AI)</option>
+                        <option value="gemini-custom">Custom Model (Google AI)</option>
                         <option value="gemma-openrouter-free">Gemma 3 27B (OpenRouter Free)</option>
                         <option value="gemma-openrouter-paid">Gemma 3 27B (OpenRouter Paid)</option>
                         <option value="mistral-openrouter-free">Mistral Small 3.1 24B (OpenRouter Free)</option>
@@ -99,6 +100,9 @@
                     <button type="button" class="btn-toggle-visibility" data-target="geminiApiKey">
                         <i class="fas fa-eye"></i>
                     </button>
+                </div>
+                <div id="geminiCustomModelWrap" class="engine-key-wrap hidden">
+                    <input type="text" id="geminiCustomModel" placeholder="e.g. gemini-1.5-pro">
                 </div>
                 <div id="openRouterKeyWrap" class="engine-key-wrap hidden">
                     <input type="password" id="openRouterApiKey" placeholder="OpenRouter API Key">

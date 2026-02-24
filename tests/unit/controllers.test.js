@@ -114,6 +114,7 @@ describe('ocrController.processFile', () => {
             engine: 'gemma-openrouter-free',
             googleApiKey: 'gk',
             geminiApiKey: '',
+            geminiCustomModel: '',
             openRouterApiKey: 'ork',
             openRouterOutputFormat: 'markdown',
             openRouterCustomModel: 'custom/model',

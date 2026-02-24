@@ -118,6 +118,7 @@ exports.createJob = async (req, res) => {
         const options = {
             googleApiKey: (req.body.googleApiKey || '').trim(),
             geminiApiKey: (req.body.geminiApiKey || '').trim(),
+            geminiCustomModel: (req.body.geminiCustomModel || '').trim(),
             openRouterApiKey: (req.body.openRouterApiKey || '').trim(),
             openRouterOutputFormat: (req.body.openRouterOutputFormat || 'plain').trim(),
             openRouterCustomModel: (req.body.openRouterCustomModel || '').trim(),

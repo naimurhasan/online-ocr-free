@@ -13,6 +13,7 @@ exports.processFile = async (req, res) => {
         const engine = req.body.engine || 'tesseract';
         const googleApiKey = (req.body.googleApiKey || '').trim();
         const geminiApiKey = (req.body.geminiApiKey || '').trim();
+        const geminiCustomModel = (req.body.geminiCustomModel || '').trim();
         const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
         const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
         const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
@@ -24,9 +25,14 @@ exports.processFile = async (req, res) => {
             return res.status(400).json({ error: 'OpenRouter API key is required. Provide it in UI or set OPENROUTER_API_KEY in .env.' });
         }
 
-        if (engine === 'gemini-flash' && !geminiApiKey) {
+        if ((engine === 'gemini-flash' || engine === 'gemini-custom') && !geminiApiKey) {
             if (req.file) deleteFile(req.file.path);
             return res.status(400).json({ error: 'Gemini API key is required.' });
+        }
+
+        if (engine === 'gemini-custom' && !geminiCustomModel) {
+            if (req.file) deleteFile(req.file.path);
+            return res.status(400).json({ error: 'Custom Gemini model ID is required.' });
         }
 
         const reqId = Date.now() % 100000;
@@ -36,6 +42,7 @@ exports.processFile = async (req, res) => {
             engine,
             googleApiKey,
             geminiApiKey,
+            geminiCustomModel,
             openRouterApiKey,
             openRouterOutputFormat,
             openRouterCustomModel,
@@ -50,7 +57,7 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Gemini request failed', 'Missing Tesseract language data'];
+        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'Missing Tesseract language data'];
         const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
         res.status(500).json({ error: isSafe ? error.message : 'Failed to process file' });
     }
@@ -65,6 +72,7 @@ exports.processBatch = async (req, res) => {
     const engine = req.body.engine || 'tesseract';
     const googleApiKey = (req.body.googleApiKey || '').trim();
     const geminiApiKey = (req.body.geminiApiKey || '').trim();
+    const geminiCustomModel = (req.body.geminiCustomModel || '').trim();
     const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     const openRouterOutputFormat = (req.body.openRouterOutputFormat || 'plain').trim().toLowerCase();
     const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
@@ -78,6 +86,7 @@ exports.processBatch = async (req, res) => {
         engine,
         googleApiKey,
         geminiApiKey,
+        geminiCustomModel,
         openRouterApiKey,
         openRouterOutputFormat,
         openRouterCustomModel,

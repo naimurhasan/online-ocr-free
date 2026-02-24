@@ -171,6 +171,12 @@ const setupEventListeners = () => {
             updateGlobalButtons();
         });
     }
+    if (geminiCustomModelInput) {
+        geminiCustomModelInput.addEventListener('input', () => {
+            saveUserPreferences();
+            updateGlobalButtons();
+        });
+    }
 
     document.querySelectorAll('.btn-toggle-visibility').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -285,6 +291,10 @@ const handleProcessClick = () => {
     }
     if (isOpenRouterSelected() && !getOpenRouterApiKey()) {
         showAppAlert('Please enter your OpenRouter API key first.', { title: 'OpenRouter API Key' });
+        return;
+    }
+    if (isGeminiCustomSelected() && (!geminiCustomModelInput || !geminiCustomModelInput.value.trim())) {
+        showAppAlert('Please enter a Gemini model ID (e.g. gemini-1.5-pro).', { title: 'Missing Gemini Model' });
         return;
     }
     if (isOpenRouterCustomSelected() && (!openRouterCustomModelInput || !openRouterCustomModelInput.value.trim())) {
