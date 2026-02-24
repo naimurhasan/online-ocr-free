@@ -25,7 +25,7 @@ exports.sendOtp = async (req, res) => {
             return res.status(429).json({ error: 'Too many requests. Try again later.' });
         }
 
-        const isDev = process.env.NODE_ENV !== 'production';
+        const isDev = process.env.OCR_DEV_OTP === 'true';
         const code = isDev ? '999999' : crypto.randomInt(100000, 999999).toString();
         const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
@@ -96,6 +96,16 @@ exports.createJob = async (req, res) => {
         if (!email) return res.status(400).json({ error: 'Email is required.' });
         if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files uploaded.' });
 
+        const { rows: verifiedOtp } = await db.query(
+            `SELECT id FROM otp_codes WHERE email = $1 AND verified = true
+             AND created_at >= NOW() - INTERVAL '15 minutes' LIMIT 1`,
+            [email]
+        );
+        if (verifiedOtp.length === 0) {
+            if (req.files) req.files.forEach(f => fs.unlink(f.path, () => {}));
+            return res.status(403).json({ error: 'Email not verified. Please verify your email first.' });
+        }
+
         const options = {
             googleApiKey: (req.body.googleApiKey || '').trim(),
             openRouterApiKey: (req.body.openRouterApiKey || '').trim(),
@@ -115,7 +125,8 @@ exports.createJob = async (req, res) => {
         const fileRows = [];
         for (const file of req.files) {
             const fileBuffer = fs.readFileSync(file.path);
-            const storagePath = `${jobId}/${uuidv4()}_${file.originalname}`;
+            const safeName = file.originalname.replace(/[^a-zA-Z0-9_\-.\u0980-\u09FF]/g, '_').slice(0, 200);
+            const storagePath = `${jobId}/${uuidv4()}_${safeName}`;
 
             const { error: uploadErr } = await storage
                 .from('ocr-uploads')

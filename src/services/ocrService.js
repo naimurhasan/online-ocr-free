@@ -102,7 +102,10 @@ const extractTextWithGoogleVision = async (imagePath, lang, googleApiKey) => {
     return apiResponse?.fullTextAnnotation?.text || apiResponse?.textAnnotations?.[0]?.description || '';
 };
 
+const MAX_CUSTOM_PROMPT_LENGTH = 2000;
+
 const extractTextWithOpenRouter = async (imagePath, mimeType, lang, openRouterApiKey, outputFormat = 'plain', engineCode, customModel = '', customPrompt = '') => {
+    customPrompt = (customPrompt || '').slice(0, MAX_CUSTOM_PROMPT_LENGTH);
     const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     if (!resolvedKey) {
         throw new Error('OpenRouter API key is required');

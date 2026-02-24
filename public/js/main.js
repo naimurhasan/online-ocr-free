@@ -704,11 +704,11 @@ const ensureOpenRouterKeyStorageConsent = async () => {
     return accepted;
 };
 
-const encryptForStorage = async (plainText) => {
+const encodeForStorage = (plainText) => {
     return btoa(unescape(encodeURIComponent(plainText)));
 };
 
-const decryptFromStorage = async (payload) => {
+const decodeFromStorage = (payload) => {
     if (!payload) return '';
     return decodeURIComponent(escape(atob(payload)));
 };
@@ -727,10 +727,10 @@ const persistGoogleKeyIfAllowed = async () => {
     if (!allowed) return;
 
     try {
-        const encrypted = await encryptForStorage(keyValue);
+        const encrypted = encodeForStorage(keyValue);
         localStorage.setItem(GOOGLE_KEY_STORAGE_KEY, encrypted);
     } catch (err) {
-        console.error('Failed to encrypt/store Google key:', err);
+        console.error('Failed to store Google key:', err);
     }
 };
 
@@ -748,10 +748,10 @@ const persistOpenRouterKeyIfAllowed = async () => {
     if (!allowed) return;
 
     try {
-        const encrypted = await encryptForStorage(keyValue);
+        const encrypted = encodeForStorage(keyValue);
         localStorage.setItem(OPENROUTER_KEY_STORAGE_KEY, encrypted);
     } catch (err) {
-        console.error('Failed to encrypt/store OpenRouter key:', err);
+        console.error('Failed to store OpenRouter key:', err);
     }
 };
 
@@ -775,11 +775,11 @@ const loadUserPreferences = async () => {
         try {
             const encrypted = localStorage.getItem(GOOGLE_KEY_STORAGE_KEY);
             if (encrypted) {
-                const decrypted = await decryptFromStorage(encrypted);
+                const decrypted = decodeFromStorage(encrypted);
                 if (decrypted) googleVisionApiKeyInput.value = decrypted;
             }
         } catch (err) {
-            console.warn('Failed to decrypt stored Google key:', err);
+            console.warn('Failed to decode stored Google key:', err);
             localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
         }
     }
@@ -788,11 +788,11 @@ const loadUserPreferences = async () => {
         try {
             const encrypted = localStorage.getItem(OPENROUTER_KEY_STORAGE_KEY);
             if (encrypted) {
-                const decrypted = await decryptFromStorage(encrypted);
+                const decrypted = decodeFromStorage(encrypted);
                 if (decrypted) openRouterApiKeyInput.value = decrypted;
             }
         } catch (err) {
-            console.warn('Failed to decrypt stored OpenRouter key:', err);
+            console.warn('Failed to decode stored OpenRouter key:', err);
             localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
         }
     }

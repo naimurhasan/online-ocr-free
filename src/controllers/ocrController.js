@@ -1,3 +1,4 @@
+const path = require('path');
 const { extractText } = require('../services/ocrService');
 const { deleteFile } = require('../utils/fileUtils');
 
@@ -42,7 +43,9 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        res.status(500).json({ error: error.message || 'Failed to process file' });
+        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Missing Tesseract language data'];
+        const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
+        res.status(500).json({ error: isSafe ? error.message : 'Failed to process file' });
     }
 };
 
@@ -105,7 +108,8 @@ exports.downloadZip = async (req, res) => {
 
     for (const file of files) {
         if (file.filename && file.text) {
-            archive.append(file.text, { name: file.filename });
+            const safeName = path.basename(file.filename);
+            archive.append(file.text, { name: safeName });
         }
     }
 

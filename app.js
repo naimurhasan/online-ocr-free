@@ -3,11 +3,18 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : [];
+
+app.use(cors(allowedOrigins.length > 0 ? { origin: allowedOrigins } : undefined));
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -23,9 +30,22 @@ const storage = multer.diskStorage({
   }
 });
 
+const ALLOWED_MIMETYPES = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/tiff', 'application/pdf'
+];
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+  fileFilter: (req, file, cb) => {
+    cb(null, ALLOWED_MIMETYPES.includes(file.mimetype));
+  }
+});
+
+const ocrLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { error: 'Too many requests. Please try again later.' }
 });
 
 app.get('/', (req, res) => {
@@ -41,8 +61,8 @@ app.get('/api/config', (req, res) => {
   res.json({ maxConcurrentThreads: maxThreads, defaultPrompt });
 });
 
-app.post('/api/ocr', upload.single('file'), ocrController.processFile);
-app.post('/api/ocr/batch', upload.array('files'), ocrController.processBatch);
+app.post('/api/ocr', ocrLimiter, upload.single('file'), ocrController.processFile);
+app.post('/api/ocr/batch', ocrLimiter, upload.array('files'), ocrController.processBatch);
 app.post('/api/download-zip', ocrController.downloadZip);
 
 app.post('/api/otp/send', emailController.sendOtp);
