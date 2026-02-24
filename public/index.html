@@ -18,7 +18,6 @@
 <body>
 
     <div class="app-container">
-        <!-- Header / Toolbar -->
         <header class="toolbar">
             <div class="logo">
                 <img src="/favicon.svg" alt="OCR Magic" class="logo-icon"> OCR Magic
@@ -27,7 +26,6 @@
             <div class="global-actions">
                 <div id="languageWrap" class="language-select">
                     <select id="language">
-                        <!-- Tesseract languages (require matching .traineddata in ./tessdata for local OCR) -->
                         <option value="eng" selected>🇬🇧 English</option>
                         <option value="ben">🇧🇩 Bangla</option>
                         <option value="eng+ben">🇧🇩🇬🇧 Bangla+English</option>
@@ -126,26 +124,21 @@
             </div>
         </header>
 
-        <!-- Main 3-Column Layout -->
         <main class="dashboard-grid">
 
-            <!-- Column 1: File Queue -->
             <section class="col-files">
                 <div class="col-header">
                     <h3>Files (<span id="fileCount">0</span>)</h3>
                     <button id="clearAllBtn" class="btn-text-only">Clear</button>
                 </div>
                 <div id="fileList" class="file-list">
-                    <!-- Empty State -->
                     <div class="empty-state">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>Drop files here</p>
                     </div>
-                    <!-- File Items injected here -->
                 </div>
             </section>
 
-            <!-- Column 2: Preview -->
             <section class="col-preview">
                 <div class="col-header">
                     <h3>Preview</h3>
@@ -158,12 +151,10 @@
                     </div>
                 </div>
                 <div class="preview-container" id="previewContainer">
-                    <!-- Image or PDF Canvas goes here -->
                     <div class="empty-preview">
                         <p>Select a file to preview</p>
                     </div>
                 </div>
-                <!-- Pagination Controls (Hidden by default) -->
                 <div id="paginationControls" class="pagination-controls hidden">
                     <button id="prevPageBtn" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
                     <span id="pageIndicator" class="page-indicator">Page 1 of 1</span>
@@ -171,7 +162,6 @@
                 </div>
             </section>
 
-            <!-- Column 3: Result -->
             <section class="col-result">
                 <div class="col-header">
                     <h3>Extracted Text</h3>
@@ -201,7 +191,6 @@
         </main>
     </div>
 
-    <!-- Settings Modal -->
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <h3 id="settingsModalTitle">File Settings</h3>
@@ -237,7 +226,6 @@
         </div>
     </div>
 
-    <!-- Columns Modal -->
     <div id="columnsModal" class="modal hidden">
         <div class="modal-content">
             <h3>Select Columns</h3>
@@ -258,7 +246,6 @@
         </div>
     </div>
 
-    <!-- Review Modal -->
     <div id="reviewModal" class="modal hidden">
         <div class="modal-content">
             <h3>Review Before Start</h3>
@@ -297,7 +284,6 @@
         </div>
     </div>
 
-    <!-- Export Choice Modal -->
     <div id="exportModal" class="modal hidden">
         <div class="modal-content" style="max-width: 450px;">
             <h3 style="text-align: center; margin-bottom: 0.5rem;">Export OCR Results</h3>
@@ -328,13 +314,11 @@
         </div>
     </div>
 
-    <!-- Email OTP Modal -->
     <div id="emailOtpModal" class="modal hidden">
         <div class="modal-content" style="max-width: 420px;">
             <h3 style="text-align: center; margin-bottom: 0.25rem;"><i class="fas fa-envelope"></i> Process & Email</h3>
             <p class="settings-file-name" style="text-align: center; margin-bottom: 1.5rem;">Files will be processed on the server. You can close the browser after submitting.</p>
 
-            <!-- Step 1: Email -->
             <div id="emailStep1">
                 <label class="input-label" for="emailInput">Email Address</label>
                 <input type="email" id="emailInput" class="input-field" placeholder="you@example.com" autocomplete="email">
@@ -345,7 +329,6 @@
                 </button>
             </div>
 
-            <!-- Step 2: OTP Verify -->
             <div id="emailStep2" class="hidden">
                 <p class="otp-sent-msg">Code sent to <strong id="otpSentEmail"></strong></p>
                 <label class="input-label" for="otpInput">Verification Code</label>
@@ -369,14 +352,12 @@
         </div>
     </div>
 
-    <!-- Advanced Settings Modal -->
     <div id="advancedSettingsModal" class="modal hidden">
         <div class="modal-content adv-settings-modal">
             <h3><i class="fas fa-cog"></i> Advanced Settings</h3>
             <p class="settings-file-name">Configure processing behavior and AI prompt customization.</p>
 
             <div class="adv-settings-body">
-                <!-- Concurrent Threads -->
                 <div class="adv-setting-group">
                     <div class="adv-setting-label">
                         <label for="concurrentThreadsSlider">Concurrent Threads</label>
@@ -384,11 +365,9 @@
                     </div>
                     <p class="adv-setting-hint">Process multiple files simultaneously. Higher values use more resources.
                     </p>
-                    <!-- max is dynamically set from server's MAX_CONCURRENT_THREADS env var -->
                     <input type="range" id="concurrentThreadsSlider" min="1" max="4" value="1" class="adv-slider">
                 </div>
 
-                <!-- Image Preprocessing -->
                 <div class="adv-setting-group">
                     <div class="adv-setting-label">
                         <label for="preprocessingToggle">Image Preprocessing</label>
@@ -401,7 +380,6 @@
                         images give better results.</p>
                 </div>
 
-                <!-- Custom AI Prompt -->
                 <div class="adv-setting-group">
                     <div class="adv-setting-label">
                         <label for="customPromptInput">Custom AI Prompt</label>
@@ -432,7 +410,6 @@
         </div>
     </div>
 
-    <!-- App Alert Modal -->
     <div id="appAlertModal" class="modal hidden">
         <div class="modal-content app-alert-content">
             <h3 id="appAlertTitle">Notice</h3>
@@ -443,7 +420,6 @@
             </div>
         </div>
     </div>
-    <!-- Toast Notification -->
     <div id="toast" class="toast">Copied to clipboard!</div>
 
     <script src="js/main.js"></script>

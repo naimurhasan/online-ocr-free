@@ -15,7 +15,6 @@ exports.sendOtp = async (req, res) => {
             return res.status(400).json({ error: 'Valid email is required.' });
         }
 
-        // Rate limit
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
         const { rows } = await db.query(
             'SELECT COUNT(*) as cnt FROM otp_codes WHERE email = $1 AND created_at >= $2',
@@ -53,7 +52,6 @@ exports.verifyOtp = async (req, res) => {
 
         const now = new Date().toISOString();
 
-        // Get the latest unverified OTP for this email
         const { rows: otpRows } = await db.query(
             `SELECT id, code, attempts FROM otp_codes
              WHERE email = $1 AND verified = false AND expires_at >= $2
@@ -67,12 +65,10 @@ exports.verifyOtp = async (req, res) => {
 
         const otpRecord = otpRows[0];
 
-        // Check if max attempts exceeded
         if (otpRecord.attempts >= OTP_MAX_ATTEMPTS) {
             return res.status(429).json({ error: 'Too many failed attempts. Request a new code.' });
         }
 
-        // Wrong code — increment attempts
         if (otpRecord.code !== otp) {
             await db.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1', [otpRecord.id]);
             const remaining = OTP_MAX_ATTEMPTS - otpRecord.attempts - 1;
@@ -109,7 +105,6 @@ exports.createJob = async (req, res) => {
             skipPreprocessing: req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true,
         };
 
-        // Create job row (uploading status prevents worker from picking it up early)
         const { rows: jobRows } = await db.query(
             `INSERT INTO ocr_jobs (email, lang, engine, options, file_count, status)
              VALUES ($1, $2, $3, $4, $5, 'uploading') RETURNING id`,
@@ -117,7 +112,6 @@ exports.createJob = async (req, res) => {
         );
         const jobId = jobRows[0].id;
 
-        // Upload each file to Supabase Storage and create job_file rows
         const fileRows = [];
         for (const file of req.files) {
             const fileBuffer = fs.readFileSync(file.path);
@@ -141,7 +135,6 @@ exports.createJob = async (req, res) => {
             return res.status(500).json({ error: 'Failed to upload files.' });
         }
 
-        // Batch insert job files
         const placeholders = fileRows.map((_, i) => {
             const offset = i * 4;
             return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
@@ -152,7 +145,6 @@ exports.createJob = async (req, res) => {
             flatValues
         );
 
-        // Mark job as ready for processing
         if (fileRows.length !== req.files.length) {
             await db.query("UPDATE ocr_jobs SET status = 'pending', file_count = $1, updated_at = NOW() WHERE id = $2", [fileRows.length, jobId]);
         } else {

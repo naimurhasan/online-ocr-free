@@ -1,8 +1,6 @@
-// State Management
-let filesData = []; // { id, file, name, status: 'pending'|'processing'|'done'|'error', text: '', previewUrl: '' }
+let filesData = [];
 let activeFileId = null;
 
-// Zoom/Pan state
 let zoomLevel = 1;
 let panX = 0;
 let panY = 0;
@@ -10,7 +8,6 @@ let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
 
-// DOM Elements
 const fileInput = document.getElementById('fileInput');
 const selectColumnsBtn = document.getElementById('selectColumnsBtn');
 const confirmSplitBtn = document.getElementById('confirmSplitBtn');
@@ -88,7 +85,6 @@ const overallEtaText = document.getElementById('overallEtaText');
 const overallProgressFill = document.getElementById('overallProgressFill');
 const overallProgressCurrent = document.getElementById('overallProgressCurrent');
 
-// Advanced Settings Modal DOM
 const advancedSettingsBtn = document.getElementById('advancedSettingsBtn');
 const advancedSettingsModal = document.getElementById('advancedSettingsModal');
 const cancelAdvSettingsBtn = document.getElementById('cancelAdvSettingsBtn');
@@ -102,7 +98,6 @@ const toggleDefaultPromptBtn = document.getElementById('toggleDefaultPromptBtn')
 const defaultPromptDisplay = document.getElementById('defaultPromptDisplay');
 const promptInfoIcon = document.getElementById('promptInfoIcon');
 
-// Advanced settings state
 let serverMaxThreads = 4;
 let serverDefaultPrompt = '';
 let advancedSettings = {
@@ -113,12 +108,10 @@ let advancedSettings = {
 
 const ADVANCED_SETTINGS_KEY = 'ocr_magic_advanced_settings_v1';
 
-// --- Initialization ---
-// Global Columns Configuration
 let globalColumnsConfigs = {
     active: false,
     numColumns: 1,
-    splitPositions: [] // percentages [0..1]
+    splitPositions: []
 };
 
 const cloneColumnsConfig = (config) => ({
@@ -211,13 +204,11 @@ const init = async () => {
 };
 
 const setupEventListeners = () => {
-    // File adding
     if (addFilesBtn) {
         addFilesBtn.addEventListener('click', () => fileInput.click());
     }
     fileInput.addEventListener('change', handleFileSelect);
 
-    // File list interactions (delegated)
     fileList.addEventListener('click', (e) => {
         const removeBtn = e.target.closest('.remove-file-btn');
         if (removeBtn) {
@@ -250,7 +241,6 @@ const setupEventListeners = () => {
             return;
         }
 
-        // If clicking the empty state, open file dialog
         if (e.target.closest('.empty-state') && !batchProgress.running) {
             fileInput.click();
         }
@@ -258,7 +248,7 @@ const setupEventListeners = () => {
 
     fileList.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy'; // Explicitly set drag cursor
+        e.dataTransfer.dropEffect = 'copy';
         fileList.classList.add('drag-over');
     });
 
@@ -272,16 +262,14 @@ const setupEventListeners = () => {
         if (batchProgress.running) return;
         fileList.classList.remove('drag-over');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files; // Optional: sync input
+            fileInput.files = e.dataTransfer.files;
             handleFileSelect({ target: { files: e.dataTransfer.files } });
         }
     });
 
-    // Global Actions
     clearAllBtn.addEventListener('click', clearAll);
     downloadAllBtn.addEventListener('click', openExportModal);
 
-    // Result Actions
     processBtn.addEventListener('click', handleProcessClick);
     copyBtn.addEventListener('click', copyToClipboard);
     cancelReviewBtn.addEventListener('click', closeReviewModal);
@@ -302,7 +290,6 @@ const setupEventListeners = () => {
         }
     });
 
-    // Advanced Settings Modal
     if (advancedSettingsBtn) {
         advancedSettingsBtn.addEventListener('click', openAdvancedSettings);
     }
@@ -330,14 +317,12 @@ const setupEventListeners = () => {
                 : '<i class="fas fa-chevron-right"></i> Show default prompt';
         });
     }
-    // Close modal on backdrop click
     if (advancedSettingsModal) {
         advancedSettingsModal.addEventListener('click', (e) => {
             if (e.target === advancedSettingsModal) closeAdvancedSettings();
         });
     }
 
-    // Theme
     themeToggleBtn.addEventListener('click', toggleTheme);
     languageSelect.addEventListener('change', saveUserPreferences);
     ocrEngineSelect.addEventListener('change', async () => {
@@ -367,7 +352,6 @@ const setupEventListeners = () => {
         });
     }
 
-    // API Key visibility toggle
     document.querySelectorAll('.btn-toggle-visibility').forEach(btn => {
         btn.addEventListener('click', () => {
             const targetId = btn.getAttribute('data-target');
@@ -387,11 +371,9 @@ const setupEventListeners = () => {
         });
     });
 
-    // Pagination
     document.getElementById('prevPageBtn').addEventListener('click', () => navigatePage(-1));
     document.getElementById('nextPageBtn').addEventListener('click', () => navigatePage(1));
 
-    // Settings Modal
     cancelSettingsBtn.addEventListener('click', closeSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
     rotationPoints.forEach((point) => {
@@ -401,7 +383,6 @@ const setupEventListeners = () => {
         });
     });
 
-    // Columns Logic
     selectColumnsBtn.addEventListener('click', () => {
         if (!activeFileId) return;
         columnsModal.classList.remove('hidden');
@@ -415,15 +396,12 @@ const setupEventListeners = () => {
         btn.addEventListener('click', async () => {
             const cols = parseInt(btn.dataset.cols, 10);
 
-            // If it's an unprocessed PDF, we want to extract the specific active page the user is looking at
             const file = filesData.find(f => f.id === activeFileId);
             if (cols > 1 && file && file.type === 'pdf' && file.pages.length === 0) {
                 const targetPage = file.activeViewerPage || 1;
-                // Temporarily disable buttons to show it's extracting
                 columnsModal.classList.add('opacity-50');
                 columnsModal.style.pointerEvents = 'none';
 
-                // Keep the old url so we can revoke it
                 const oldUrl = file.previewUrl;
                 await generatePdfThumbnail(file, targetPage);
                 if (oldUrl && oldUrl !== 'https://placehold.co/50x70?text=PDF') {
@@ -440,7 +418,6 @@ const setupEventListeners = () => {
     });
 
     confirmSplitBtn.addEventListener('click', async () => {
-        // Lock in the global config
         globalColumnsConfigs.active = globalColumnsConfigs.numColumns > 1;
         const activeFile = filesData.find(f => f.id === activeFileId);
         syncColumnsToFile(activeFile);
@@ -458,23 +435,20 @@ const setupEventListeners = () => {
             }
         }
 
-        // Remove draggable class from splitters to lock them
         const splitters = document.querySelectorAll('.column-splitter');
         splitters.forEach(s => s.style.pointerEvents = 'none');
 
         updateColumnsButtonUI();
-        updateGlobalButtons(); // Un-disable Process Button state
-        recenterPreviewView(); // Enforce the transition back to centered scrollable view
+        updateGlobalButtons();
+        recenterPreviewView();
     });
 
-    // Zoom/Pan on preview container
     previewContainer.addEventListener('wheel', handleZoomWheel, { passive: false });
     previewContainer.addEventListener('mousedown', handlePanStart);
     document.addEventListener('mousemove', handlePanMove);
     document.addEventListener('mouseup', handlePanEnd);
 };
 
-// --- Theme Logic ---
 const initTheme = () => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -531,12 +505,10 @@ const appendOcrConfigToFormData = (formData) => {
         if (isOpenRouterCustomSelected() && openRouterCustomModelInput) {
             formData.append('openRouterCustomModel', openRouterCustomModelInput.value.trim());
         }
-        // Send custom prompt for AI models
         if (advancedSettings.customPrompt) {
             formData.append('customPrompt', advancedSettings.customPrompt);
         }
     }
-    // Send preprocessing toggle
     if (advancedSettings.skipPreprocessing) {
         formData.append('skipPreprocessing', 'true');
     }
@@ -571,7 +543,6 @@ const loadAdvancedSettingsFromStorage = () => {
 };
 
 const openAdvancedSettings = () => {
-    // Populate modal with current settings
     if (concurrentThreadsSlider) {
         concurrentThreadsSlider.max = serverMaxThreads;
         concurrentThreadsSlider.value = advancedSettings.concurrentThreads;
@@ -615,7 +586,6 @@ const resetAllSettings = async () => {
     );
     if (!confirmed) return;
 
-    // Clear all stored prefs
     localStorage.removeItem(PREFS_STORAGE_KEY);
     localStorage.removeItem(ADVANCED_SETTINGS_KEY);
     localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
@@ -623,7 +593,6 @@ const resetAllSettings = async () => {
     localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
     localStorage.removeItem(OPENROUTER_KEY_CONSENT_KEY);
 
-    // Reset UI controls
     languageSelect.value = 'eng';
     ocrEngineSelect.value = 'tesseract';
     if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.value = 'plain';
@@ -631,10 +600,8 @@ const resetAllSettings = async () => {
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.value = '';
     if (openRouterApiKeyInput) openRouterApiKeyInput.value = '';
 
-    // Reset advanced settings
     advancedSettings = { concurrentThreads: 1, customPrompt: '', skipPreprocessing: false };
 
-    // Update modal controls
     if (concurrentThreadsSlider) {
         concurrentThreadsSlider.value = 1;
         concurrentThreadsValue.textContent = '1';
@@ -750,13 +717,11 @@ const persistGoogleKeyIfAllowed = async () => {
     if (!googleVisionApiKeyInput) return;
     const keyValue = getGoogleVisionApiKey();
 
-    // Remove persisted key when field is cleared
     if (!keyValue) {
         localStorage.removeItem(GOOGLE_KEY_STORAGE_KEY);
         return;
     }
 
-    // Ask consent only when user is actively trying to use/save Google key
     if (!isGoogleVisionSelected()) return;
     const allowed = await ensureGoogleKeyStorageConsent();
     if (!allowed) return;
@@ -804,7 +769,6 @@ const loadUserPreferences = async () => {
         console.warn('Failed to load preferences:', err);
     }
 
-    // Load advanced settings
     loadAdvancedSettingsFromStorage();
 
     if (getGoogleStorageConsent() === 'accepted') {
@@ -834,20 +798,13 @@ const loadUserPreferences = async () => {
     }
 };
 
-// --- File Handling ---
 const handleFileSelect = async (e) => {
     if (batchProgress.running) return;
     const newFiles = Array.from(e.target.files);
 
-    // Clear input immediately so the exact same file can be selected again
-    // even if it was just deleted or if processing errors out below.
     if (fileInput) fileInput.value = '';
 
     if (newFiles.length === 0) return;
-
-    // Show loading state if needed
-    // addFilesBtn.disabled = true;
-    // addFilesBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> processing...';
 
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
     const skipped = [];
@@ -864,43 +821,12 @@ const handleFileSelect = async (e) => {
 
     renderFileList();
 
-    // Auto-select first new file
     if (!activeFileId && filesData.length > 0) {
         selectFile(filesData[filesData.length - 1].id);
     }
 
-    // addFilesBtn.disabled = false;
-    // addFilesBtn.innerHTML = '<i class="fas fa-plus"></i> Add Files';
     updateGlobalButtons();
 };
-
-/*
-const processPdfFile = async (file) => {
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.0 }); // High res for OCR
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const imageFile = new File([blob], `${file.name}_page_${i}.png`, { type: 'image/png' });
-
-            addFileToState(imageFile, `${file.name} - Page ${i}`);
-        }
-    } catch (err) {
-        console.error("Error processing PDF:", err);
-        showAppAlert(`Failed to process PDF: ${file.name}`, { title: 'Processing Error' });
-    }
-};
-*/
 
 const addFileToState = (file, name) => {
     const id = crypto.randomUUID();
@@ -911,21 +837,19 @@ const addFileToState = (file, name) => {
         name: name,
         type: isPdf ? 'pdf' : 'image',
         status: 'pending', // pending, processing, done, error
-        text: '', // For images
-        pages: [], // For PDFs: [{ pageNum, imgUrl, text }]
-        currentPage: 0, // 0-indexed
-        startPage: null, // For PDFs
-        endPage: null, // For PDFs
-        totalPages: null, // For PDFs
-        columnConfig: { active: false, numColumns: 1, splitPositions: [] }, // Per-file column split config
-        rotation: 0, // 0, 90, 180, 270
-        activeViewerPage: 1, // For tracking the actual visible page in the custom PDF DOM viewer
-        // Use a generic placeholder or the image URL
+        text: '',
+        pages: [],
+        currentPage: 0,
+        startPage: null,
+        endPage: null,
+        totalPages: null,
+        columnConfig: { active: false, numColumns: 1, splitPositions: [] },
+        rotation: 0,
+        activeViewerPage: 1,
         previewUrl: isPdf ? 'https://placehold.co/50x70?text=PDF' : URL.createObjectURL(file),
         pdfViewerUrl: isPdf ? URL.createObjectURL(file) : null
     };
 
-    // If it's a PDF, try to generate a thumbnail immediately
     if (isPdf) {
         generatePdfThumbnail(fileObj);
     }
@@ -954,21 +878,17 @@ const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const thumbUrl = URL.createObjectURL(blob);
 
-        // File may have been removed while thumbnail was rendering.
         const stillPresent = filesData.some((f) => f.id === fileObj.id);
         if (!stillPresent) {
             URL.revokeObjectURL(thumbUrl);
             return;
         }
 
-        // Update state
         fileObj.previewUrl = thumbUrl;
 
-        // Update UI if this file is in the list
         const imgEl = fileList.querySelector(`.file-item[data-file-id="${fileObj.id}"] img`);
         if (imgEl) imgEl.src = thumbUrl;
 
-        // If this file is currently active/selected, update the main preview too (if it was showing the placeholder)
         if (activeFileId === fileObj.id) {
             renderPreview();
         }
@@ -994,7 +914,7 @@ const selectFile = (id) => {
     syncColumnsFromFile(file);
     updateColumnsButtonUI();
     resetZoomPan();
-    renderFileList(); // Update active class
+    renderFileList();
     renderPreview();
     renderResult();
     requestAnimationFrame(() => fitImageInPreview());
@@ -1053,7 +973,6 @@ const removeFile = (id) => {
     }
 };
 
-// --- Settings Modal ---
 let settingsFileId = null;
 let settingsRotation = 0;
 
@@ -1194,10 +1113,8 @@ const saveSettings = async () => {
 
     applyRotationToFile(file, settingsRotation);
 
-    // Close settings modal FIRST so it doesn't overlap or interfere with alert modals
     closeSettings();
 
-    // Now trigger the alerts if needed
     if (file.type === 'pdf') {
         const totalPdfFiles = filesData.filter((f) => f.type === 'pdf').length;
         const pageSelectionChanged = prevStartPage !== file.startPage || prevEndPage !== file.endPage;
@@ -1236,7 +1153,6 @@ const saveSettings = async () => {
     renderResult();
 };
 
-// --- Rendering ---
 const renderFileList = () => {
     fileList.innerHTML = '';
     fileCountSpan.textContent = filesData.length;
@@ -1250,7 +1166,6 @@ const renderFileList = () => {
         return;
     }
 
-    // Prepend "Add More" item
     const addMoreItem = document.createElement('div');
     addMoreItem.className = 'file-item add-more-item';
     addMoreItem.innerHTML = `
@@ -1424,7 +1339,6 @@ const renderPreview = () => {
             }
         } else {
             paginationControls.classList.add('hidden');
-            // Show custom viewer if no columns, OR if columns are confirmed and locked in
             const showCustomViewer = file.type === 'pdf'
                 && file.rotation === 0
                 && (globalColumnsConfigs.numColumns === 1 || globalColumnsConfigs.active);
@@ -1435,11 +1349,9 @@ const renderPreview = () => {
                 prevPageBtn.disabled = true;
                 nextPageBtn.disabled = true;
 
-                // Render our custom scrolling PDF.js viewer instead of a native <object> tag
                 previewContainer.innerHTML = '<div class="pdf-custom-viewer" id="customPdfViewer"></div>';
                 const customViewer = document.getElementById('customPdfViewer');
 
-                // Fetch the PDF to know how many pages
                 file.file.arrayBuffer().then(arrayBuffer => {
                     return pdfjsLib.getDocument(arrayBuffer).promise;
                 }).then(pdf => {
@@ -1448,18 +1360,16 @@ const renderPreview = () => {
                     file.activeViewerPage = safeActivePage;
                     pageIndicator.textContent = `Page ${safeActivePage} of ${totalPages}`;
 
-                    // Create an intersection observer to detect active page and trigger rendering
                     const observer = new IntersectionObserver((entries) => {
                         let mostVisiblePage = file.activeViewerPage;
                         let maxRatio = 0;
 
                         entries.forEach(entry => {
-                            // If it's intersecting, and hasn't been rendered yet, render it
                             const pageNum = parseInt(entry.target.dataset.page);
                             if (entry.isIntersecting) {
                                 if (!entry.target.dataset.rendered) {
                                     entry.target.dataset.rendered = 'true';
-                                    entry.target.innerHTML = ''; // Clear placeholder text
+                                    entry.target.innerHTML = '';
                                     const canvas = document.createElement('canvas');
                                     entry.target.appendChild(canvas);
 
@@ -1467,7 +1377,6 @@ const renderPreview = () => {
                                         const viewport = page.getViewport({ scale: 1.5 });
                                         canvas.height = viewport.height;
                                         canvas.width = viewport.width;
-                                        // Keep container size matched exactly to canvas
                                         entry.target.style.height = viewport.height + 'px';
 
                                         const context = canvas.getContext('2d');
@@ -1475,7 +1384,6 @@ const renderPreview = () => {
                                     });
                                 }
 
-                                // Track which page is most visible
                                 if (entry.intersectionRatio > maxRatio) {
                                     maxRatio = entry.intersectionRatio;
                                     mostVisiblePage = pageNum;
@@ -1492,12 +1400,10 @@ const renderPreview = () => {
                         threshold: [0.1, 0.5, 0.9]
                     });
 
-                    // Create placeholder boxes for every page
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const pageContainer = document.createElement('div');
                         pageContainer.className = 'pdf-page-container';
                         pageContainer.dataset.page = i;
-                        // Give it a generic minimum height so scrolling works initially before lazy load
                         pageContainer.style.height = '800px';
                         pageContainer.style.width = '100%';
                         pageContainer.style.maxWidth = '800px';
@@ -1506,7 +1412,6 @@ const renderPreview = () => {
                         observer.observe(pageContainer);
                     }
 
-                    // Scroll to the last known active page if restarting viewer
                     if (file.activeViewerPage > 1) {
                         setTimeout(() => {
                             const target = customViewer.querySelector(`[data-page="${file.activeViewerPage}"]`);
@@ -1523,7 +1428,6 @@ const renderPreview = () => {
                 return;
             } else if (file.previewUrl && file.previewUrl !== 'https://placehold.co/50x70?text=PDF') {
                 src = file.previewUrl;
-                // Allow it to fall through to the image renderer below
             } else {
                 previewContainer.innerHTML = '<div class="empty-preview"><p>Generating preview...</p></div>';
                 return;
@@ -1534,7 +1438,6 @@ const renderPreview = () => {
         paginationControls.classList.add('hidden');
     }
 
-    // Create viewport wrapper for zoom/pan
     const viewport = document.createElement('div');
     viewport.className = 'preview-viewport';
     viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
@@ -1577,7 +1480,6 @@ const renderPreview = () => {
     imgWrapper.appendChild(img);
     viewport.appendChild(imgWrapper);
 
-    // Render splitters if active
     if (globalColumnsConfigs.numColumns > 1) {
         globalColumnsConfigs.splitPositions.forEach((pos, index) => {
             const splitter = document.createElement('div');
@@ -1585,7 +1487,6 @@ const renderPreview = () => {
             splitter.style.left = `${pos * 100}%`;
             splitter.dataset.index = index;
 
-            // If confirm hasn't been clicked, they are draggable
             if (!globalColumnsConfigs.active) {
                 setupSplitterDrag(splitter, imgWrapper);
             } else {
@@ -1598,7 +1499,6 @@ const renderPreview = () => {
 
     previewContainer.appendChild(viewport);
 
-    // Add zoom controls
     const zoomCtrl = document.createElement('div');
     zoomCtrl.className = 'zoom-controls';
     zoomCtrl.innerHTML = `
@@ -1609,16 +1509,14 @@ const renderPreview = () => {
     previewContainer.appendChild(zoomCtrl);
 };
 
-// --- Columns & Splitting Logic ---
 const setupColumns = (cols) => {
     globalColumnsConfigs.numColumns = cols;
     if (cols === 1) {
         globalColumnsConfigs.active = false;
         globalColumnsConfigs.splitPositions = [];
     } else {
-        globalColumnsConfigs.active = false; // Not confirmed yet
+        globalColumnsConfigs.active = false;
         globalColumnsConfigs.splitPositions = [];
-        // Distribute evenly
         for (let i = 1; i < cols; i++) {
             globalColumnsConfigs.splitPositions.push(i / cols);
         }
@@ -1628,9 +1526,8 @@ const setupColumns = (cols) => {
     syncColumnsToFile(activeFile);
     updateColumnsButtonUI();
 
-    // Render preview to show/hide splitters
     recenterPreviewView();
-    updateGlobalButtons(); // Re-eval Process Button state
+    updateGlobalButtons();
 };
 
 const setupSplitterDrag = (splitter, container) => {
@@ -1639,7 +1536,6 @@ const setupSplitterDrag = (splitter, container) => {
     splitter.addEventListener('mousedown', (e) => {
         isDragging = true;
         splitter.classList.add('dragging');
-        // Prevent pan handling
         e.stopPropagation();
     });
 
@@ -1647,17 +1543,13 @@ const setupSplitterDrag = (splitter, container) => {
         if (!isDragging) return;
 
         const rect = container.getBoundingClientRect();
-        // Calculate raw x position relative to scaled container
         let x = (e.clientX - rect.left) / zoomLevel;
-        // Convert to percentage
         let percentage = x / (rect.width / zoomLevel);
 
-        // Boundaries
         percentage = Math.max(0.01, Math.min(0.99, percentage));
 
         const index = parseInt(splitter.dataset.index, 10);
 
-        // Prevent crossing neighbors
         const minPos = index > 0 ? globalColumnsConfigs.splitPositions[index - 1] + 0.02 : 0.01;
         const maxPos = index < globalColumnsConfigs.splitPositions.length - 1 ? globalColumnsConfigs.splitPositions[index + 1] - 0.02 : 0.99;
 
@@ -1684,7 +1576,6 @@ const navigatePage = (direction) => {
     const newPage = file.currentPage + direction;
     if (newPage < 0 || newPage >= file.pages.length) return;
 
-    // Keep current zoom/pan when changing page so the new page inherits last page view state
     file.currentPage = newPage;
     renderPreview();
     renderResult();
@@ -1734,8 +1625,6 @@ const updateGlobalButtons = () => {
         } else if (openRouterKeyMissing) {
             processBtn.innerHTML = '<i class="fas fa-key"></i> Add OpenRouter API Key';
         } else {
-            // Always show Start OCR Processing, even if all processed 
-            // The user rarely wants to quickly clear all via the primary action button
             processBtn.innerHTML = '<i class="fas fa-play"></i> Start OCR Processing (All)';
         }
     }
@@ -1752,12 +1641,8 @@ const updateGlobalButtons = () => {
     if (openRouterApiKeyInput) openRouterApiKeyInput.disabled = isProcessing || !isOpenRouterGemmaSelected();
 };
 
-// --- Actions ---
 const handleProcessClick = () => {
     if (batchProgress.running || filesData.length === 0) return;
-
-    // We no longer intercept with a "Clear all files" dialog prompt.
-    // Clicking Process will simply re-run OCR on the files currently in the queue.
 
     if (globalColumnsConfigs.numColumns > 1 && !globalColumnsConfigs.active) return;
     if (isGoogleVisionSelected() && !getGoogleVisionApiKey()) {
@@ -1786,7 +1671,6 @@ const openReviewModal = () => {
     reviewSelectionCount.textContent = `${filesData.length} ${itemLabel}`;
     reviewEngine.textContent = selectedEngine;
 
-    // Show concurrency row only if > 1
     const threads = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
     if (reviewConcurrencyRow && reviewConcurrency) {
         if (threads > 1) {
@@ -1813,8 +1697,6 @@ const openExportModal = () => {
 const closeExportModal = () => {
     exportModal.classList.add('hidden');
 };
-
-// --- Email OTP Modal (Process & Email Job) ---
 
 const setEmailBtnLoading = (btn, loading) => {
     const text = btn.querySelector('.btn-text');
@@ -1942,7 +1824,6 @@ const handleVerifyAndSubmitJob = async () => {
     setEmailBtnLoading(verifyAndSendBtn, true);
 
     try {
-        // Step 1: Verify OTP first
         const verifyResp = await fetch('/api/otp/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1956,7 +1837,6 @@ const handleVerifyAndSubmitJob = async () => {
             return;
         }
 
-        // Step 2: Upload files and create job
         const formData = new FormData();
         formData.append('email', email);
         formData.append('lang', languageSelect.value);
@@ -2177,7 +2057,6 @@ const startBatchProcessing = async () => {
     const concurrency = Math.max(1, Math.min(advancedSettings.concurrentThreads, serverMaxThreads));
 
     if (concurrency <= 1) {
-        // Sequential processing (original behavior)
         for (const file of filesToProcess) {
             batchProgress.currentFileName = file.name;
             prepareFileForProcessing(file);
@@ -2208,7 +2087,6 @@ const startBatchProcessing = async () => {
             updateOverallProgressUI();
         }
     } else {
-        // Concurrent processing using promise-pool pattern
         const inFlight = new Set();
         let index = 0;
 
@@ -2246,15 +2124,12 @@ const startBatchProcessing = async () => {
             return promise;
         };
 
-        // Fill initial pool
         while (inFlight.size < concurrency && index < filesToProcess.length) {
             launchNext();
         }
 
-        // As each finishes, launch the next
         while (inFlight.size > 0) {
             await Promise.race(inFlight);
-            // Launch more until pool is full or no more files
             while (inFlight.size < concurrency && index < filesToProcess.length) {
                 launchNext();
             }
@@ -2276,7 +2151,6 @@ const processSingleImage = async (file) => {
         const fileColumns = getFileColumnsConfig(file);
 
         if (fileColumns.active && fileColumns.numColumns > 1) {
-            // Process columns sequentially
             const textParts = [];
             const splits = [0, ...fileColumns.splitPositions, 1];
 
@@ -2302,7 +2176,6 @@ const processSingleImage = async (file) => {
             file.status = 'done';
 
         } else {
-            // Standard whole-image processing
             const formData = new FormData();
             formData.append('file', workingBlob, file.name);
             appendOcrConfigToFormData(formData);
@@ -2337,7 +2210,7 @@ const processPdfDocument = async (file) => {
         file.pages.forEach(page => {
             if (page.imgUrl) URL.revokeObjectURL(page.imgUrl);
         });
-        file.pages = []; // Reset pages
+        file.pages = [];
 
         let start = file.startPage && file.startPage > 0 ? file.startPage : 1;
         let end = file.endPage && file.endPage > 0 && file.endPage <= pdf.numPages ? file.endPage : pdf.numPages;
@@ -2354,11 +2227,9 @@ const processPdfDocument = async (file) => {
         const pageNumbers = [];
         for (let i = start; i <= end; i++) pageNumbers.push(i);
 
-        // Process in chunks of `concurrency` — render chunk, OCR chunk, free blobs, repeat
         for (let chunkStart = 0; chunkStart < pageNumbers.length; chunkStart += concurrency) {
             const chunk = pageNumbers.slice(chunkStart, chunkStart + concurrency);
 
-            // Step 1: Render this chunk's pages to blobs
             const chunkJobs = [];
             for (const pageNum of chunk) {
                 if (batchProgress.running) {
@@ -2382,14 +2253,12 @@ const processPdfDocument = async (file) => {
                 file.pages.push({ pageNum, imgUrl: imageUrl, text: 'Processing...' });
                 chunkJobs.push({ pageIndex, pageNum, workingBlob });
 
-                // Free canvas immediately
                 canvas.width = 0;
                 canvas.height = 0;
             }
             renderPreview();
             renderResult();
 
-            // Step 2: Send this chunk's OCR requests concurrently
             const ocrPromises = chunkJobs.map(job => (async () => {
                 try {
                     if (fileColumns.active && fileColumns.numColumns > 1) {
@@ -2416,7 +2285,6 @@ const processPdfDocument = async (file) => {
                 } catch (err) {
                     file.pages[job.pageIndex].text = "Error: Connection failed";
                 }
-                // Release the blob ref after OCR upload
                 job.workingBlob = null;
                 ocrCompleted++;
                 if (batchProgress.running) {
@@ -2426,7 +2294,6 @@ const processPdfDocument = async (file) => {
                 renderResult();
             })());
 
-            // Wait for all OCR in this chunk to finish before rendering next chunk
             await Promise.all(ocrPromises);
         }
 
@@ -2441,8 +2308,8 @@ const processPdfDocument = async (file) => {
     }
 
     renderFileList();
-    renderPreview(); // Ensure controls are updated
-    renderResult();  // Update the processing button state specifically
+    renderPreview();
+    renderResult();
     updateGlobalButtons();
 };
 
@@ -2540,7 +2407,6 @@ const downloadAllZip = async () => {
     }
 };
 
-// --- Utilities ---
 const cropImageBlob = (blob, startPct, endPct) => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -2595,5 +2461,4 @@ const rotateImageBlob = (blob, rotation = 0) => {
     });
 };
 
-// Start
 document.addEventListener('DOMContentLoaded', init);

@@ -212,15 +212,13 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
     const tempDir = await ensureTempFolder();
     const timestamp = Date.now();
 
-    // Step 0: Original (Keep for reference)
     const step0Path = path.join(tempDir, `${stepPrefix}_${timestamp}_0_original.png`);
     await sharp(imagePath).toFile(step0Path);
     console.log('✅ Step 0: Original saved to', step0Path);
 
-    // Optimized Step: Combined Processing
-    // Grayscale -> Resize -> Normalize -> Sharpen -> Median (Denoise) -> Threshold
     const finalPath = path.join(tempDir, `${stepPrefix}_${timestamp}_final_processed.png`);
 
+    // Grayscale -> Resize -> Normalize -> Sharpen -> Blur (dilation sim) -> Threshold
     await sharp(step0Path)
         .grayscale()
         .resize({
@@ -229,17 +227,12 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
             withoutEnlargement: false
         })
         .normalize()
-        // Matra Fix: Thicken text
-        // 1. Sharpen to enhance edges
         .sharpen()
-        // 2. Blur to spread black pixels (dilation simulation)
         .blur(0.5)
-        // 3. High Threshold to capture the spread (gray) pixels as black
         .threshold(160)
         .toFile(finalPath);
 
     console.log('✅ Optimized Processing Complete:', finalPath);
-    console.log('\n📁 Processed image saved in:', tempDir);
 
     return finalPath;
 };
@@ -248,19 +241,18 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
     const tempDir = await ensureTempFolder();
     const timestamp = Date.now();
 
-    // Step 0: Original
     const step0Path = path.join(tempDir, `${stepPrefix}_${timestamp}_0_original.png`);
     await sharp(imagePath).toFile(step0Path);
 
     console.log('🔍 Running Optimized Advanced Preprocessing...');
 
-    // Combined Chain: Grayscale -> Median -> Linear (Contrast) -> Resize -> Sharpen -> Threshold
     const finalPath = path.join(tempDir, `${stepPrefix}_${timestamp}_final_processed.png`);
 
+    // Grayscale -> Median -> Contrast -> Resize -> Sharpen -> Threshold
     await sharp(step0Path)
         .grayscale()
         .median(3)
-        .linear(1.5, -(128 * 1.5) + 128) // Contrast increase
+        .linear(1.5, -(128 * 1.5) + 128)
         .resize({
             width: 3000,
             fit: 'inside',
@@ -361,9 +353,7 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
     }
 
     console.log('\n✨ Text extraction complete!');
-    console.log('📁 Check ./temp folder for all preprocessing steps');
 
-    // Apply rule-based cleaning
     console.log('🧹 Running Rule-Based Cleaner...');
     const cleanedText = cleanText(textResult);
 

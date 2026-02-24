@@ -61,10 +61,8 @@ exports.processBatch = async (req, res) => {
     const skipPreprocessing = req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true;
     const files = req.files;
 
-    // Immediate response
     res.json({ message: 'Batch processing started. Results will be emailed.', fileCount: files.length });
 
-    // Background processing
     processBatchFiles(files, lang || 'eng+ben', email, {
         engine,
         googleApiKey,
@@ -79,7 +77,7 @@ exports.processBatch = async (req, res) => {
 const archiver = require('archiver');
 
 exports.downloadZip = async (req, res) => {
-    const { files } = req.body; // Expects [{ filename: 'doc.txt', text: 'content' }, ...]
+    const { files } = req.body;
 
     if (!files || !Array.isArray(files) || files.length === 0) {
         return res.status(400).json({ error: 'No content to zip' });
@@ -88,7 +86,7 @@ exports.downloadZip = async (req, res) => {
     res.attachment('ocr_results.zip');
 
     const archive = archiver('zip', {
-        zlib: { level: 9 } // Sets the compression level.
+        zlib: { level: 9 }
     });
 
     archive.on('warning', function (err) {
@@ -129,6 +127,4 @@ async function processBatchFiles(files, langKey, email, options = {}) {
             deleteFile(file.path);
         }
     }
-    // Note: email delivery is now handled by the job worker system.
-    // This batch endpoint is kept for backward compatibility.
 }

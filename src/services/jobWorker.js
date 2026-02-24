@@ -27,7 +27,6 @@ const poll = async () => {
 };
 
 const processNextJob = async () => {
-    // Claim one pending job atomically
     const { rows: jobs } = await db.query(
         `UPDATE ocr_jobs SET status = 'processing', started_at = NOW(), updated_at = NOW()
          WHERE id = (SELECT id FROM ocr_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1)
@@ -54,7 +53,6 @@ const processNextJob = async () => {
             try {
                 await db.query("UPDATE ocr_job_files SET status = 'processing' WHERE id = $1", [jf.id]);
 
-                // Download from Supabase Storage to temp file
                 const { data: fileData, error: dlErr } = await storage
                     .from('ocr-uploads')
                     .download(jf.storage_path);
@@ -67,7 +65,6 @@ const processNextJob = async () => {
                 const buffer = Buffer.from(await fileData.arrayBuffer());
                 fs.writeFileSync(tmpFile, buffer);
 
-                // Run OCR
                 const text = await extractText(tmpFile, jf.mimetype, job.lang, false, {
                     engine: job.engine,
                     ...job.options,
@@ -96,16 +93,13 @@ const processNextJob = async () => {
                 results.push({ filename: jf.original_name, text: `[Error: ${fileErr.message}]` });
                 filesProcessed++;
 
-                // Clean up temp file on error
                 const tmpFile = path.join(os.tmpdir(), 'ocr-jobs', `${jf.id}_${jf.original_name}`);
                 fs.unlink(tmpFile, () => {});
             }
         }
 
-        // Build ZIP from results
         const zipBuffer = await buildZip(results);
 
-        // Upload ZIP to Supabase Storage
         const resultPath = `${job.id}/ocr_results.zip`;
         const { error: uploadErr } = await storage
             .from('ocr-results')
@@ -113,24 +107,20 @@ const processNextJob = async () => {
 
         if (uploadErr) throw new Error(`Failed to upload result ZIP: ${uploadErr.message}`);
 
-        // Generate signed download URL (7 days)
         const { data: signedData, error: signErr } = await storage
             .from('ocr-results')
-            .createSignedUrl(resultPath, 7 * 24 * 60 * 60); // 7 days in seconds
+            .createSignedUrl(resultPath, 7 * 24 * 60 * 60);
 
         if (signErr) throw new Error(`Failed to create download link: ${signErr.message}`);
 
-        // Email download link
         await sendResults(job.email, signedData.signedUrl);
 
-        // Mark job as done
         await db.query(
             `UPDATE ocr_jobs SET status = 'done', files_processed = $1, result_path = $2,
              completed_at = NOW(), updated_at = NOW() WHERE id = $3`,
             [filesProcessed, resultPath, job.id]
         );
 
-        // Clean up uploaded input files from storage
         const filePaths = jobFiles.map(f => f.storage_path);
         await storage.from('ocr-uploads').remove(filePaths);
 
@@ -142,7 +132,6 @@ const processNextJob = async () => {
             [err.message, job.id]
         );
 
-        // Clean up uploaded input files on failure too
         try {
             const { rows: failedFiles } = await db.query(
                 'SELECT storage_path FROM ocr_job_files WHERE job_id = $1',
@@ -184,31 +173,26 @@ const recoverStuckJobs = async () => {
     }
 };
 
-// Periodic cleanup: remove old completed/failed jobs, result ZIPs, and expired OTPs
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // every hour
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 const startCleanupSchedule = () => {
     setInterval(runCleanup, CLEANUP_INTERVAL_MS);
-    // Run once on startup after a short delay
     setTimeout(runCleanup, 30000);
 };
 
 const runCleanup = async () => {
     try {
-        // 1. Delete result ZIPs older than 7 days
         const { rows: expiredJobs } = await db.query(
             `SELECT id, result_path FROM ocr_jobs
              WHERE status IN ('done', 'failed') AND completed_at < NOW() - INTERVAL '7 days'`
         );
 
         if (expiredJobs.length > 0) {
-            // Remove result ZIPs from storage
             const resultPaths = expiredJobs.filter(j => j.result_path).map(j => j.result_path);
             if (resultPaths.length > 0) {
                 await storage.from('ocr-results').remove(resultPaths);
             }
 
-            // Delete job files and job rows (cascade)
             const jobIds = expiredJobs.map(j => j.id);
             await db.query('DELETE FROM ocr_job_files WHERE job_id = ANY($1)', [jobIds]);
             await db.query('DELETE FROM ocr_jobs WHERE id = ANY($1)', [jobIds]);
@@ -216,7 +200,6 @@ const runCleanup = async () => {
             console.log(`🧹 Cleaned up ${expiredJobs.length} expired jobs`);
         }
 
-        // 2. Delete expired/verified OTPs older than 1 day
         const { rowCount: otpCount } = await db.query(
             "DELETE FROM otp_codes WHERE created_at < NOW() - INTERVAL '1 day'"
         );
@@ -224,13 +207,11 @@ const runCleanup = async () => {
             console.log(`🧹 Cleaned up ${otpCount} old OTP codes`);
         }
 
-        // 3. Delete stale uploading jobs (stuck for > 1 hour, upload probably failed)
         const { rows: staleUploads } = await db.query(
             `SELECT id FROM ocr_jobs WHERE status = 'uploading' AND created_at < NOW() - INTERVAL '1 hour'`
         );
         if (staleUploads.length > 0) {
             const staleIds = staleUploads.map(j => j.id);
-            // Clean up any uploaded files
             const { rows: staleFiles } = await db.query(
                 'SELECT storage_path FROM ocr_job_files WHERE job_id = ANY($1)',
                 [staleIds]
