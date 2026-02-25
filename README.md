@@ -1,4 +1,4 @@
-# OCR Magic
+# onlineocrfree
 
 OCR service for Bangla, English, and 60+ languages. Supports Tesseract (free), Google Vision API, and OpenRouter AI models.
 
@@ -141,7 +141,7 @@ npx supabase db push
 ### 5. Start with PM2
 
 ```bash
-pm2 start app.js --name ocr-magic
+pm2 start app.js --name onlineocrfree
 pm2 save
 pm2 startup  # follow the printed command to enable auto-start on reboot
 ```
@@ -152,7 +152,7 @@ pm2 startup  # follow the printed command to enable auto-start on reboot
 sudo apt install nginx
 ```
 
-Create `/etc/nginx/sites-available/ocr-magic`:
+Create `/etc/nginx/sites-available/onlineocrfree`:
 
 ```nginx
 server {
@@ -174,7 +174,7 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/ocr-magic /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/onlineocrfree /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -192,13 +192,13 @@ sudo certbot --nginx -d your-domain.com
 
 ```bash
 # Logs
-pm2 logs ocr-magic
+pm2 logs onlineocrfree
 
 # Restart
-pm2 restart ocr-magic
+pm2 restart onlineocrfree
 
 # Update code
-git pull && npm install && pm2 restart ocr-magic
+git pull && npm install && pm2 restart onlineocrfree
 
 # Supabase: create a new migration
 npx supabase migration new <migration-name>

@@ -115,7 +115,7 @@ let advancedSettings = {
     skipPreprocessing: false
 };
 
-const ADVANCED_SETTINGS_KEY = 'ocr_magic_advanced_settings_v1';
+const ADVANCED_SETTINGS_KEY = 'onlineocrfree_advanced_settings_v1';
 
 let globalColumnsConfigs = {
     active: false,
@@ -197,10 +197,10 @@ const trialCreditsMsg = document.getElementById('trialCreditsMsg');
 const trialError = document.getElementById('trialError');
 const cancelTrialBtn = document.getElementById('cancelTrialBtn');
 
-const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
-const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
-const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';
-const GEMINI_KEY_STORAGE_KEY = 'ocr_magic_gemini_key_enc_v1';
-const GEMINI_KEY_CONSENT_KEY = 'ocr_magic_gemini_key_cookie_consent_v1';
-const OPENROUTER_KEY_STORAGE_KEY = 'ocr_magic_openrouter_key_enc_v1';
-const OPENROUTER_KEY_CONSENT_KEY = 'ocr_magic_openrouter_key_cookie_consent_v1';
+const PREFS_STORAGE_KEY = 'onlineocrfree_prefs_v1';
+const GOOGLE_KEY_STORAGE_KEY = 'onlineocrfree_google_key_enc_v1';
+const GOOGLE_KEY_CONSENT_KEY = 'onlineocrfree_google_key_cookie_consent_v1';
+const GEMINI_KEY_STORAGE_KEY = 'onlineocrfree_gemini_key_enc_v1';
+const GEMINI_KEY_CONSENT_KEY = 'onlineocrfree_gemini_key_cookie_consent_v1';
+const OPENROUTER_KEY_STORAGE_KEY = 'onlineocrfree_openrouter_key_enc_v1';
+const OPENROUTER_KEY_CONSENT_KEY = 'onlineocrfree_openrouter_key_cookie_consent_v1';

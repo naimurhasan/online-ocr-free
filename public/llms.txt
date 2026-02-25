@@ -1,0 +1,51 @@
+# onlineocrfree
+
+> Free online OCR tool for converting scanned PDF and images to text.
+
+## Product Description
+
+onlineocrfree is a free, browser-based OCR (Optical Character Recognition) tool that converts scanned PDF documents and images into editable text. It supports 60+ languages with special optimization for Bangla (Bengali) text recognition.
+
+## Key Features
+
+- **Multi-engine OCR**: Tesseract (free, local), Google Vision API (cloud), OpenRouter AI models (Gemma, Mistral, custom)
+- **PDF Support**: Multi-page PDF processing with custom page range selection
+- **Batch Processing**: Upload and process multiple files simultaneously with concurrent threads
+- **Column Splitting**: Split multi-column document layouts for accurate per-column text extraction
+- **Image Preprocessing**: Automatic grayscale, sharpening, and threshold pipeline for improved accuracy
+- **60+ Languages**: English, Bangla, Chinese, Japanese, Korean, French, German, Spanish, Russian, and many more
+- **Bangla OCR**: Optimized Bengali text recognition with automatic post-correction for character misreads
+- **Multiple Export Formats**: Download as combined TXT, individual file ZIP, or formatted PDF
+- **Email Results**: Submit background OCR jobs and receive results via email
+- **Dark & Light Theme**: Comfortable reading with automatic system theme detection
+- **No Account Required**: Upload and process files immediately, preferences saved locally
+
+## Supported File Types
+
+- PDF (multi-page, with page range selection)
+- JPG / JPEG
+- PNG
+- Other common image formats
+
+## Supported Languages (60+)
+
+English, Bangla (Bengali), Chinese Simplified, Chinese Traditional, Japanese, Korean, French, German, Spanish, Italian, Portuguese, Russian, Arabic, Dutch, Swedish, Norwegian, Danish, Finnish, Polish, Czech, Hungarian, Turkish, Ukrainian, Indonesian, Thai, Vietnamese, and many more.
+
+## OCR Engines
+
+1. **Tesseract OCR** - Free, open-source, runs locally. Good for clean documents with standard layouts.
+2. **Google Vision API** - Cloud-based with high accuracy. Free trial available (100 credits). Best for most documents.
+3. **Gemini Flash (Google AI)** - AI-powered text extraction via Google's Gemini models.
+4. **OpenRouter Models** - Flexible AI models including Gemma 3 27B, Mistral Small 3.1 24B, and custom model support.
+
+## Usage
+
+1. Upload PDF or image files (drag & drop or file browser)
+2. Select OCR language and engine
+3. Optionally configure column splitting and page ranges
+4. Click "Start OCR Processing"
+5. View, copy, or export extracted text
+
+## Website
+
+https://onlineocrfree.com/

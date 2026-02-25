@@ -63,7 +63,7 @@ const extractText = async (imagePath, mimeType, lang, openRouterApiKey, outputFo
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${rawKey}`,
             'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'http://localhost:3000',
-            'X-Title': process.env.OPENROUTER_APP_TITLE || 'OCR Magic'
+            'X-Title': process.env.OPENROUTER_APP_TITLE || 'onlineocrfree'
         },
         body: JSON.stringify({
             model: engineCode === 'openrouter-custom' && customModel ? customModel : (OPENROUTER_MODELS[engineCode] || OPENROUTER_MODELS['gemma-openrouter-free']),

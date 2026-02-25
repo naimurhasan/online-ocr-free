@@ -186,9 +186,9 @@ describe('state.js - initial state values', () => {
     });
 
     test('storage keys are defined', () => {
-        expect(G.ctx.PREFS_STORAGE_KEY).toBe('ocr_magic_prefs_v1');
-        expect(G.ctx.GOOGLE_KEY_STORAGE_KEY).toBe('ocr_magic_google_key_enc_v1');
-        expect(G.ctx.OPENROUTER_KEY_STORAGE_KEY).toBe('ocr_magic_openrouter_key_enc_v1');
+        expect(G.ctx.PREFS_STORAGE_KEY).toBe('onlineocrfree_prefs_v1');
+        expect(G.ctx.GOOGLE_KEY_STORAGE_KEY).toBe('onlineocrfree_google_key_enc_v1');
+        expect(G.ctx.OPENROUTER_KEY_STORAGE_KEY).toBe('onlineocrfree_openrouter_key_enc_v1');
     });
 });
 

@@ -47,7 +47,7 @@ Rules:
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${rawKey}`,
             'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'http://localhost:3000',
-            'X-Title': process.env.OPENROUTER_APP_TITLE || 'OCR Magic'
+            'X-Title': process.env.OPENROUTER_APP_TITLE || 'onlineocrfree'
         },
         body: JSON.stringify({
             model,
