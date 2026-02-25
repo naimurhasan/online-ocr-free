@@ -126,11 +126,17 @@ const _setupEventListeners = () => {
     if (toggleDefaultPromptBtn) {
         toggleDefaultPromptBtn.addEventListener('click', () => {
             const isHidden = defaultPromptDisplay.classList.contains('hidden');
+            const isMarkdown = openRouterOutputFormatSelect?.value === 'markdown';
+            const formatLabel = isMarkdown ? 'markdown' : 'plain text';
+            if (isHidden) {
+                const activePrompt = isMarkdown ? serverDefaultPromptMarkdown : serverDefaultPromptPlain;
+                defaultPromptDisplay.textContent = activePrompt || '(Could not load default prompt from server)';
+            }
             defaultPromptDisplay.classList.toggle('hidden', !isHidden);
             toggleDefaultPromptBtn.classList.toggle('expanded', isHidden);
             toggleDefaultPromptBtn.innerHTML = isHidden
-                ? '<i class="fas fa-chevron-right"></i> Hide default prompt'
-                : '<i class="fas fa-chevron-right"></i> Show default prompt';
+                ? `<i class="fas fa-chevron-right"></i> Hide default prompt (${formatLabel})`
+                : `<i class="fas fa-chevron-right"></i> Show default prompt (${formatLabel})`;
         });
     }
     if (advancedSettingsModal) {

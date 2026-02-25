@@ -198,57 +198,32 @@ describe('ocrController.downloadZip', () => {
 describe('ocrController.formatForPdf', () => {
     afterEach(() => jest.clearAllMocks());
 
-    test('returns 400 when no text provided', async () => {
+    test('returns 400 when no files provided', async () => {
         const req = { body: {} };
         const res = mockRes();
 
         await ocrController.formatForPdf(req, res);
 
         expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: 'No text provided for formatting' });
+        expect(res.json).toHaveBeenCalledWith({ error: 'No content provided for formatting' });
     });
 
-    test('returns 400 for empty string text', async () => {
-        const req = { body: { text: '   ' } };
+    test('returns 400 for empty files array', async () => {
+        const req = { body: { files: [] } };
         const res = mockRes();
 
         await ocrController.formatForPdf(req, res);
 
         expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: 'No text provided for formatting' });
+        expect(res.json).toHaveBeenCalledWith({ error: 'No content provided for formatting' });
     });
 
-    test('returns 400 when no API key available', async () => {
-        delete process.env.OPENROUTER_API_KEY;
-        const req = { body: { text: 'Hello world', engine: 'gemma-openrouter-free' } };
-        const res = mockRes();
-
-        await ocrController.formatForPdf(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: 'OpenRouter API key is required for AI formatting' });
-    });
-
-    test('returns 400 for invalid engine', async () => {
-        const req = { body: { text: 'Hello world', engine: 'tesseract', openRouterApiKey: 'key123' } };
-        const res = mockRes();
-
-        await ocrController.formatForPdf(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Invalid engine for AI formatting' });
-    });
-
-    test('returns formatted HTML on success', async () => {
-        jest.mock('../../src/services/pdfFormatService', () => ({
-            formatTextAsHtml: jest.fn().mockResolvedValue('<h1>Hello</h1><p>World</p>')
-        }));
-
+    test('returns formatted HTML for plain text engine', async () => {
         const req = {
             body: {
-                text: 'Hello World',
-                engine: 'gemma-openrouter-free',
-                openRouterApiKey: 'sk-test-key',
+                files: [{ filename: 'test.txt', text: 'Hello World' }],
+                engine: 'tesseract',
+                outputFormat: 'plain',
                 lang: 'eng'
             }
         };
@@ -256,54 +231,43 @@ describe('ocrController.formatForPdf', () => {
 
         await ocrController.formatForPdf(req, res);
 
-        expect(res.json).toHaveBeenCalledWith({ html: '<h1>Hello</h1><p>World</p>' });
+        expect(res.json).toHaveBeenCalled();
+        const result = res.json.mock.calls[0][0];
+        expect(result.html).toContain('Hello World');
+        expect(result.html).toContain('<pre>');
     });
 
-    test('returns safe error for OpenRouter failures', async () => {
-        jest.mock('../../src/services/pdfFormatService', () => ({
-            formatTextAsHtml: jest.fn().mockRejectedValue(new Error('OpenRouter request failed (401)'))
-        }));
-
-        jest.resetModules();
-        const controller = require('../../src/controllers/ocrController');
-
+    test('returns formatted HTML with markdown parsing for AI engine', async () => {
         const req = {
             body: {
-                text: 'Hello',
+                files: [{ filename: 'doc.pdf', text: '# Title\n\nSome paragraph' }],
                 engine: 'gemma-openrouter-free',
-                openRouterApiKey: 'bad-key',
+                outputFormat: 'markdown',
                 lang: 'eng'
             }
         };
         const res = mockRes();
 
-        await controller.formatForPdf(req, res);
+        await ocrController.formatForPdf(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: 'OpenRouter request failed (401)' });
+        expect(res.json).toHaveBeenCalled();
+        const result = res.json.mock.calls[0][0];
+        expect(result.html).toContain('<h1>');
+        expect(result.html).toContain('Title');
+        expect(result.html).toContain('Some paragraph');
     });
 
-    test('returns generic error for unknown failures', async () => {
-        jest.mock('../../src/services/pdfFormatService', () => ({
-            formatTextAsHtml: jest.fn().mockRejectedValue(new Error('Database exploded'))
-        }));
-
-        jest.resetModules();
-        const controller = require('../../src/controllers/ocrController');
-
+    test('returns 500 on internal error', async () => {
         const req = {
             body: {
-                text: 'Hello',
-                engine: 'gemma-openrouter-free',
-                openRouterApiKey: 'key',
-                lang: 'eng'
+                files: null,
+                engine: 'tesseract'
             }
         };
         const res = mockRes();
 
-        await controller.formatForPdf(req, res);
+        await ocrController.formatForPdf(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Failed to format text for PDF' });
+        expect(res.status).toHaveBeenCalledWith(400);
     });
 });

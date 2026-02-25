@@ -483,7 +483,7 @@ const updateGlobalButtons = () => {
     if (selectColumnsBtn) selectColumnsBtn.disabled = !hasFiles || isProcessing;
     if (languageSelect) languageSelect.disabled = isProcessing;
     if (ocrEngineSelect) ocrEngineSelect.disabled = isProcessing;
-    if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.disabled = isProcessing || !isOpenRouterSelected();
+    if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.disabled = isProcessing || (!isOpenRouterSelected() && !isGeminiSelected());
     if (googleVisionApiKeyInput) googleVisionApiKeyInput.disabled = isProcessing || !isGoogleVisionSelected();
     if (openRouterApiKeyInput) openRouterApiKeyInput.disabled = isProcessing || !isOpenRouterSelected();
 };

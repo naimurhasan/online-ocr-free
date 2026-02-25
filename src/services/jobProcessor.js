@@ -81,7 +81,7 @@ const processNextJob = async (buildZip, buildPdf) => {
         let resultBuffer, resultPath, contentType, formatLabel;
 
         if (wantPdf && buildPdf) {
-            resultBuffer = buildPdf(results);
+            resultBuffer = buildPdf(results, { engine: job.engine, ...job.options, lang: job.lang });
             resultPath = `${job.id}/ocr_results.html`;
             contentType = 'text/html';
             formatLabel = 'pdf';

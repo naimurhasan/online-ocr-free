@@ -245,6 +245,10 @@ npx supabase migration new <migration-name>
 npx supabase db push
 ```
 
+## Contributing Translations
+
+We welcome translation contributions! If you'd like to add support for a new language or improve an existing translation, feel free to open a pull request.
+
 ## Project Structure
 
 ```

@@ -56,7 +56,7 @@ beforeAll(() => {
     const emailController = require('../../src/controllers/emailController');
 
     app.get('/api/config', (req, res) => {
-        res.json({ maxConcurrentThreads: 4, defaultPrompt: 'test prompt' });
+        res.json({ maxConcurrentThreads: 4, defaultPromptPlain: 'test plain prompt', defaultPromptMarkdown: 'test markdown prompt' });
     });
 
     app.post('/api/ocr', upload.single('file'), ocrController.processFile);
@@ -76,7 +76,8 @@ describe('GET /api/config', () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty('maxConcurrentThreads');
-        expect(res.body).toHaveProperty('defaultPrompt');
+        expect(res.body).toHaveProperty('defaultPromptPlain');
+        expect(res.body).toHaveProperty('defaultPromptMarkdown');
         expect(typeof res.body.maxConcurrentThreads).toBe('number');
     });
 });
@@ -178,32 +179,37 @@ describe('POST /api/download-zip', () => {
 });
 
 describe('POST /api/format-for-pdf', () => {
-    test('returns 400 when no text provided', async () => {
+    test('returns 400 when no files provided', async () => {
         const res = await request(app)
             .post('/api/format-for-pdf')
             .send({});
 
         expect(res.status).toBe(400);
-        expect(res.body.error).toBe('No text provided for formatting');
+        expect(res.body.error).toBe('No content provided for formatting');
     });
 
-    test('returns 400 when no API key provided', async () => {
-        delete process.env.OPENROUTER_API_KEY;
+    test('returns 400 for empty files array', async () => {
         const res = await request(app)
             .post('/api/format-for-pdf')
-            .send({ text: 'Hello world', engine: 'gemma-openrouter-free' });
+            .send({ files: [] });
 
         expect(res.status).toBe(400);
-        expect(res.body.error).toBe('OpenRouter API key is required for AI formatting');
+        expect(res.body.error).toBe('No content provided for formatting');
     });
 
-    test('returns 400 for non-OpenRouter engine', async () => {
+    test('returns HTML for valid files with tesseract engine', async () => {
         const res = await request(app)
             .post('/api/format-for-pdf')
-            .send({ text: 'Hello', engine: 'tesseract', openRouterApiKey: 'key' });
+            .send({
+                files: [{ filename: 'test.txt', text: 'Hello World' }],
+                engine: 'tesseract',
+                outputFormat: 'plain',
+                lang: 'eng'
+            });
 
-        expect(res.status).toBe(400);
-        expect(res.body.error).toBe('Invalid engine for AI formatting');
+        expect(res.status).toBe(200);
+        expect(res.body.html).toContain('Hello World');
+        expect(res.body.html).toContain('<pre>');
     });
 });
 

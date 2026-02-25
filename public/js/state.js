@@ -108,7 +108,8 @@ const defaultPromptDisplay = document.getElementById('defaultPromptDisplay');
 const promptInfoIcon = document.getElementById('promptInfoIcon');
 
 let serverMaxThreads = 4;
-let serverDefaultPrompt = '';
+let serverDefaultPromptPlain = '';
+let serverDefaultPromptMarkdown = '';
 let advancedSettings = {
     concurrentThreads: 1,
     customPrompt: '',

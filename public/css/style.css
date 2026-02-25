@@ -889,7 +889,7 @@ select,
 .engine-key-wrap input,
 .btn-secondary,
 .btn-action {
-    height: 38px;
+    min-height: 38px;
 }
 
 .global-actions .language-select select {

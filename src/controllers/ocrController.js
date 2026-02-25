@@ -77,7 +77,7 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'Missing Tesseract language data', 'Invalid trial key', 'Trial key exhausted'];
+        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'OpenRouter request failed', 'Missing Tesseract language data', 'Invalid trial key', 'Trial key exhausted', 'Out of capacity', 'Request timed out'];
         const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
         res.status(500).json({ error: isSafe ? error.message : 'Failed to process file' });
     }
@@ -165,33 +165,19 @@ exports.downloadZip = async (req, res) => {
 
 exports.formatForPdf = async (req, res) => {
     try {
-        const { text, engine, openRouterApiKey, openRouterCustomModel, lang } = req.body;
+        const { files, engine, outputFormat, lang } = req.body;
 
-        if (!text || typeof text !== 'string' || text.trim().length === 0) {
-            return res.status(400).json({ error: 'No text provided for formatting' });
+        if (!files || !Array.isArray(files) || files.length === 0) {
+            return res.status(400).json({ error: 'No content provided for formatting' });
         }
 
-        const resolvedEngine = engine || 'gemma-openrouter-free';
-        const resolvedKey = (openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
-
-        if (!resolvedKey) {
-            return res.status(400).json({ error: 'OpenRouter API key is required for AI formatting' });
-        }
-
-        const { isOpenRouterEngine } = require('../services/engines/openRouter');
-        if (!isOpenRouterEngine(resolvedEngine)) {
-            return res.status(400).json({ error: 'Invalid engine for AI formatting' });
-        }
-
-        const { formatTextAsHtml } = require('../services/pdfFormatService');
-        const html = await formatTextAsHtml(text, resolvedKey, resolvedEngine, openRouterCustomModel || '', lang || 'eng');
+        const { buildPdfHtml } = require('../utils/markdownToHtml');
+        const html = buildPdfHtml(files, { engine: engine || 'tesseract', outputFormat: outputFormat || 'plain', lang: lang || 'eng' });
 
         res.json({ html });
     } catch (error) {
         console.error('Format for PDF Error:', error);
-        const safeMessages = ['OpenRouter API key is required', 'OpenRouter request failed'];
-        const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
-        res.status(500).json({ error: isSafe ? error.message : 'Failed to format text for PDF' });
+        res.status(500).json({ error: 'Failed to format text for PDF' });
     }
 };
 

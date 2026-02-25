@@ -58,8 +58,10 @@ const trialController = require('./src/controllers/trialController');
 
 app.get('/api/config', (req, res) => {
   const maxThreads = Math.max(1, parseInt(process.env.MAX_CONCURRENT_THREADS || '4', 10));
-  const defaultPrompt = 'You are an OCR engine. Extract all readable text from this image.\nRules:\n- {{FORMAT_INSTRUCTION}}\n- Do not translate text.\nLanguage hint: {{LANGUAGE_HINT}}.';
-  res.json({ maxConcurrentThreads: maxThreads, defaultPrompt });
+  const { getFormatInstruction, buildOcrPrompt } = require('./src/utils/promptUtils');
+  const defaultPromptPlain = buildOcrPrompt(getFormatInstruction('plain'), '{{LANGUAGE}}', '');
+  const defaultPromptMarkdown = buildOcrPrompt(getFormatInstruction('markdown'), '{{LANGUAGE}}', '');
+  res.json({ maxConcurrentThreads: maxThreads, defaultPromptPlain, defaultPromptMarkdown });
 });
 
 app.post('/api/ocr', ocrLimiter, upload.single('file'), ocrController.processFile);

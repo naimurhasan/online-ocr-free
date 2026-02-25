@@ -5,7 +5,8 @@ const fetchServerConfig = async () => {
         const res = await fetch('/api/config');
         const data = await res.json();
         serverMaxThreads = Math.max(1, data.maxConcurrentThreads || 4);
-        serverDefaultPrompt = data.defaultPrompt || '';
+        serverDefaultPromptPlain = data.defaultPromptPlain || '';
+        serverDefaultPromptMarkdown = data.defaultPromptMarkdown || '';
         if (concurrentThreadsSlider) {
             concurrentThreadsSlider.max = serverMaxThreads;
         }
@@ -36,7 +37,7 @@ const updateEngineUI = () => {
     if (geminiKeyWrap) geminiKeyWrap.classList.toggle('hidden', !isGeminiSelected());
     if (geminiCustomModelWrap) geminiCustomModelWrap.classList.toggle('hidden', !isGeminiCustomSelected());
     openRouterKeyWrap.classList.toggle('hidden', !isOpenRouterSelected());
-    openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterSelected());
+    openRouterFormatWrap.classList.toggle('hidden', !isOpenRouterSelected() && !isGeminiSelected());
     if (openRouterCustomModelWrap) {
         openRouterCustomModelWrap.classList.toggle('hidden', !isOpenRouterCustomSelected());
     }
@@ -50,8 +51,12 @@ const appendOcrConfigToFormData = (formData) => {
     }
     if (isGeminiSelected()) {
         formData.append('geminiApiKey', getGeminiApiKey());
+        formData.append('openRouterOutputFormat', openRouterOutputFormatSelect?.value || 'plain');
         if (isGeminiCustomSelected() && geminiCustomModelInput) {
             formData.append('geminiCustomModel', geminiCustomModelInput.value.trim());
+        }
+        if (advancedSettings.customPrompt) {
+            formData.append('customPrompt', advancedSettings.customPrompt);
         }
     }
     if (isOpenRouterSelected()) {
@@ -111,10 +116,13 @@ const openAdvancedSettings = () => {
         customPromptInput.value = advancedSettings.customPrompt;
     }
     if (defaultPromptDisplay) {
-        defaultPromptDisplay.textContent = serverDefaultPrompt || '(Could not load default prompt from server)';
+        const isMarkdown = openRouterOutputFormatSelect?.value === 'markdown';
+        const activePrompt = isMarkdown ? serverDefaultPromptMarkdown : serverDefaultPromptPlain;
+        const formatLabel = isMarkdown ? 'markdown' : 'plain text';
+        defaultPromptDisplay.textContent = activePrompt || '(Could not load default prompt from server)';
         defaultPromptDisplay.classList.add('hidden');
         toggleDefaultPromptBtn.classList.remove('expanded');
-        toggleDefaultPromptBtn.innerHTML = '<i class="fas fa-chevron-right"></i> Show default prompt';
+        toggleDefaultPromptBtn.innerHTML = `<i class="fas fa-chevron-right"></i> Show default prompt (${formatLabel})`;
     }
     advancedSettingsModal.classList.remove('hidden');
 };
