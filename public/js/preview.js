@@ -199,8 +199,8 @@ const renderPreview = () => {
                 previewContainer.innerHTML = '<div class="pdf-custom-viewer" id="customPdfViewer"></div>';
                 const customViewer = document.getElementById('customPdfViewer');
 
-                file.file.arrayBuffer().then(arrayBuffer => {
-                    return pdfjsLib.getDocument(arrayBuffer).promise;
+                ensurePdfJsLoaded().then((pdfjs) => {
+                    return file.file.arrayBuffer().then(arrayBuffer => pdfjs.getDocument(arrayBuffer).promise);
                 }).then(pdf => {
                     const totalPages = pdf.numPages;
                     const safeActivePage = Math.min(Math.max(file.activeViewerPage || 1, 1), totalPages);

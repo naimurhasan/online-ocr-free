@@ -204,3 +204,46 @@ const GEMINI_KEY_STORAGE_KEY = 'onlineocrfree_gemini_key_enc_v1';
 const GEMINI_KEY_CONSENT_KEY = 'onlineocrfree_gemini_key_cookie_consent_v1';
 const OPENROUTER_KEY_STORAGE_KEY = 'onlineocrfree_openrouter_key_enc_v1';
 const OPENROUTER_KEY_CONSENT_KEY = 'onlineocrfree_openrouter_key_cookie_consent_v1';
+
+const PDFJS_CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+const PDFJS_MAIN_URL = `${PDFJS_CDN_BASE}/pdf.min.js`;
+const PDFJS_WORKER_URL = `${PDFJS_CDN_BASE}/pdf.worker.min.js`;
+let pdfJsLoadPromise = null;
+
+const ensurePdfJsLoaded = () => {
+    if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        return Promise.resolve(window.pdfjsLib);
+    }
+    if (pdfJsLoadPromise) return pdfJsLoadPromise;
+
+    pdfJsLoadPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-lib="pdfjs"]');
+        if (existing) {
+            existing.addEventListener('load', () => {
+                if (!window.pdfjsLib) return reject(new Error('PDF.js failed to initialize'));
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+                resolve(window.pdfjsLib);
+            }, { once: true });
+            existing.addEventListener('error', () => reject(new Error('PDF.js failed to load')), { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = PDFJS_MAIN_URL;
+        script.async = true;
+        script.dataset.lib = 'pdfjs';
+        script.onload = () => {
+            if (!window.pdfjsLib) return reject(new Error('PDF.js failed to initialize'));
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+            resolve(window.pdfjsLib);
+        };
+        script.onerror = () => reject(new Error('PDF.js failed to load'));
+        document.head.appendChild(script);
+    }).catch((err) => {
+        pdfJsLoadPromise = null;
+        throw err;
+    });
+
+    return pdfJsLoadPromise;
+};

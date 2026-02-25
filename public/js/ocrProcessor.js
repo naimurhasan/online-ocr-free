@@ -188,8 +188,9 @@ const processSingleImage = async (file) => {
 
 const processPdfDocument = async (file) => {
     try {
+        const pdfjs = await ensurePdfJsLoaded();
         const arrayBuffer = await file.file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const pdf = await pdfjs.getDocument(arrayBuffer).promise;
         file.totalPages = pdf.numPages;
         const fileColumns = getFileColumnsConfig(file);
         file.pages.forEach(page => {
@@ -427,6 +428,23 @@ const formatDuration = (durationMs) => {
 
 // ── Export ──
 
+const EXPORT_GITHUB_STAR_URL = 'https://github.com/naimurhasan/online-ocr-free.git';
+
+const promptGithubStarAfterExport = async () => {
+    const shouldOpen = await showAppConfirm(
+        'Export completed. If onlineocrfree helped you, would you like to star it on GitHub?',
+        {
+            title: 'Export Complete',
+            confirmText: 'Star on GitHub',
+            cancelText: 'Maybe Later'
+        }
+    );
+
+    if (shouldOpen) {
+        window.open(EXPORT_GITHUB_STAR_URL, '_blank', 'noopener,noreferrer');
+    }
+};
+
 const collectDoneFilesForExport = () => {
     const filesToExport = [];
     filesData.forEach(f => {
@@ -454,7 +472,7 @@ const collectDoneFilesForExport = () => {
     return filesToExport;
 };
 
-const downloadCombinedTxt = () => {
+const downloadCombinedTxt = async () => {
     const filesToExport = collectDoneFilesForExport();
     if (filesToExport.length === 0) return;
     closeExportModal();
@@ -470,6 +488,8 @@ const downloadCombinedTxt = () => {
     a.download = `ocr_results_combined_${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+
+    await promptGithubStarAfterExport();
 };
 
 const downloadAllZip = async () => {
@@ -494,6 +514,7 @@ const downloadAllZip = async () => {
             a.download = 'ocr_results_' + Date.now() + '.zip';
             a.click();
             URL.revokeObjectURL(url);
+            await promptGithubStarAfterExport();
         } else {
             await showAppAlert('Failed to generate zip', { title: 'Export Error' });
         }
@@ -589,6 +610,8 @@ const downloadPdf = async () => {
         } else {
             printWin.onload = triggerPrint;
         }
+
+        await promptGithubStarAfterExport();
 
     } catch (err) {
         console.error('PDF export error:', err);

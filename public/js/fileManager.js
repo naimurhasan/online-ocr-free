@@ -61,8 +61,9 @@ const addFileToState = (file, name) => {
 
 const generatePdfThumbnail = async (fileObj, pageNum = 1) => {
     try {
+        const pdfjs = await ensurePdfJsLoaded();
         const arrayBuffer = await fileObj.file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const pdf = await pdfjs.getDocument(arrayBuffer).promise;
         fileObj.totalPages = pdf.numPages;
 
         // Ensure requested page exists
@@ -184,8 +185,9 @@ const getPdfTotalPages = async (file) => {
     if (file.totalPages && file.totalPages > 0) {
         return file.totalPages;
     }
+    const pdfjs = await ensurePdfJsLoaded();
     const arrayBuffer = await file.file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    const pdf = await pdfjs.getDocument(arrayBuffer).promise;
     file.totalPages = pdf.numPages;
     return file.totalPages;
 };

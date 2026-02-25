@@ -584,6 +584,10 @@ button {
     justify-content: center;
 }
 
+.github-star-btn i {
+    color: #f59e0b;
+}
+
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;

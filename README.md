@@ -1,6 +1,44 @@
-# onlineocrfree
+<h1 align="center">onlineocrfree</h1>
 
-OCR service for Bangla, English, and 60+ languages. Supports Tesseract (free), Google Vision API, and OpenRouter AI models.
+<p align="center">
+  Free online OCR for PDF & images with Bangla, English, and 60+ languages.
+</p>
+
+<p align="center">
+  <a href="https://onlineocrfree.qzz.io"><img alt="Live" src="https://img.shields.io/badge/Live-onlineocrfree.qzz.io-16a34a?style=for-the-badge&logo=vercel&logoColor=white"></a>
+  <a href="https://github.com/naimurhasan/online-ocr-free"><img alt="GitHub stars" src="https://img.shields.io/github/stars/naimurhasan/online-ocr-free?style=for-the-badge&logo=github"></a>
+  <a href="https://github.com/naimurhasan/online-ocr-free"><img alt="GitHub forks" src="https://img.shields.io/github/forks/naimurhasan/online-ocr-free?style=for-the-badge&logo=github"></a>
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white">
+  <img alt="Express" src="https://img.shields.io/badge/Express-4.x-111111?style=for-the-badge&logo=express&logoColor=white">
+  <img alt="Tesseract" src="https://img.shields.io/badge/OCR-Tesseract-0f766e?style=for-the-badge">
+  <img alt="Languages" src="https://img.shields.io/badge/Languages-60%2B-7c3aed?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/License-ISC-f59e0b?style=for-the-badge">
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#live-url">Live Demo</a> •
+  <a href="#screenshots">Screenshots</a> •
+  <a href="#local-development">Local Setup</a> •
+  <a href="#vps-deployment">Deployment</a>
+</p>
+
+---
+
+## Live URL
+
+[https://onlineocrfree.qzz.io](https://onlineocrfree.qzz.io)
+
+## Screenshots
+
+### OCR Preview
+![OCR Preview](./screenshots/01_ocr_preview.png)
+
+### Advanced Settings
+![Advanced Settings](./screenshots/02_advance_setting.png)
+
+### Rotation
+![Rotation](./screenshots/03_rotation.png)
 
 ## Features
 
