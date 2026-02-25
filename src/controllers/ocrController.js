@@ -1,6 +1,24 @@
 const path = require('path');
 const { extractText } = require('../services/ocrService');
 const { deleteFile } = require('../utils/fileUtils');
+const { db } = require('../utils/supabaseClient');
+
+const resolveGoogleKey = async (key) => {
+    const prefix = process.env.TRIAL_KEY_PREFIX || 'ocrmtrial_';
+    if (!key || !key.startsWith(prefix)) return key;
+
+    const { rows } = await db.query(
+        'SELECT id, credits_used, credits_total FROM trial_keys WHERE trial_key = $1',
+        [key]
+    );
+    if (rows.length === 0) throw new Error('Invalid trial key.');
+    const trial = rows[0];
+    if (trial.credits_used >= trial.credits_total)
+        throw new Error('Trial key exhausted. Please use your own Google Vision API key.');
+
+    await db.query('UPDATE trial_keys SET credits_used = credits_used + 1 WHERE id = $1', [trial.id]);
+    return process.env.GOOGLE_VISION_API_KEY;
+};
 
 exports.processFile = async (req, res) => {
     try {
@@ -11,7 +29,7 @@ exports.processFile = async (req, res) => {
         const { path: filePath, mimetype } = req.file;
         const lang = req.body.lang || 'eng+ben';
         const engine = req.body.engine || 'tesseract';
-        const googleApiKey = (req.body.googleApiKey || '').trim();
+        let googleApiKey = (req.body.googleApiKey || '').trim();
         const geminiApiKey = (req.body.geminiApiKey || '').trim();
         const geminiCustomModel = (req.body.geminiCustomModel || '').trim();
         const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
@@ -19,6 +37,8 @@ exports.processFile = async (req, res) => {
         const openRouterCustomModel = (req.body.openRouterCustomModel || '').trim();
         const customPrompt = (req.body.customPrompt || '').trim();
         const skipPreprocessing = req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true;
+
+        if (engine === 'google-vision') googleApiKey = await resolveGoogleKey(googleApiKey);
 
         if (engine === 'gemma-openrouter' && !openRouterApiKey) {
             if (req.file) deleteFile(req.file.path);
@@ -57,7 +77,7 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'Missing Tesseract language data'];
+        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'Missing Tesseract language data', 'Invalid trial key', 'Trial key exhausted'];
         const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
         res.status(500).json({ error: isSafe ? error.message : 'Failed to process file' });
     }
@@ -70,7 +90,7 @@ exports.processBatch = async (req, res) => {
 
     const { email, lang } = req.body;
     const engine = req.body.engine || 'tesseract';
-    const googleApiKey = (req.body.googleApiKey || '').trim();
+    let googleApiKey = (req.body.googleApiKey || '').trim();
     const geminiApiKey = (req.body.geminiApiKey || '').trim();
     const geminiCustomModel = (req.body.geminiCustomModel || '').trim();
     const openRouterApiKey = (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
@@ -79,6 +99,15 @@ exports.processBatch = async (req, res) => {
     const customPrompt = (req.body.customPrompt || '').trim();
     const skipPreprocessing = req.body.skipPreprocessing === 'true' || req.body.skipPreprocessing === true;
     const files = req.files;
+
+    if (engine === 'google-vision') {
+        try {
+            googleApiKey = await resolveGoogleKey(googleApiKey);
+        } catch (err) {
+            req.files.forEach(f => require('../utils/fileUtils').deleteFile(f.path));
+            return res.status(400).json({ error: err.message });
+        }
+    }
 
     res.json({ message: 'Batch processing started. Results will be emailed.', fileCount: files.length });
 

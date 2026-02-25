@@ -450,6 +450,13 @@ select {
     position: relative;
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+}
+
+.key-input-inner {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 .engine-key-wrap input {
@@ -491,6 +498,18 @@ select {
 .engine-key-wrap input::placeholder {
     color: var(--accent-color);
 }
+
+.btn-trial-key {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-trial-key:hover { opacity: 0.85; }
 
 button {
     cursor: pointer;

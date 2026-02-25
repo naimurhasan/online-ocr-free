@@ -54,6 +54,7 @@ app.get('/', (req, res) => {
 
 const ocrController = require('./src/controllers/ocrController');
 const emailController = require('./src/controllers/emailController');
+const trialController = require('./src/controllers/trialController');
 
 app.get('/api/config', (req, res) => {
   const maxThreads = Math.max(1, parseInt(process.env.MAX_CONCURRENT_THREADS || '4', 10));
@@ -80,6 +81,9 @@ app.post('/api/job/create', (req, res, next) => {
 app.get('/api/job/active', emailController.getActiveJob);
 app.get('/api/job/:id/status', emailController.getJobStatus);
 app.get('/api/job/:id/pdf', emailController.getJobPdf);
+
+app.post('/api/trial/claim', trialController.claimTrialKey);
+app.get('/api/trial/status', trialController.getTrialStatus);
 
 const jobWorker = require('./src/services/jobWorker');
 

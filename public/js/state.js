@@ -182,6 +182,21 @@ let batchProgress = {
 let progressTimerId = null;
 let appAlertResolver = null;
 
+const getTrialKeyBtn = document.getElementById('getTrialKeyBtn');
+const trialModal = document.getElementById('trialModal');
+const trialEmailInput = document.getElementById('trialEmailInput');
+const trialSendOtpBtn = document.getElementById('trialSendOtpBtn');
+const trialResendOtpBtn = document.getElementById('trialResendOtpBtn');
+const trialStep1 = document.getElementById('trialStep1');
+const trialStep2 = document.getElementById('trialStep2');
+const trialStep3 = document.getElementById('trialStep3');
+const trialOtpSentEmail = document.getElementById('trialOtpSentEmail');
+const trialOtpInput = document.getElementById('trialOtpInput');
+const trialClaimBtn = document.getElementById('trialClaimBtn');
+const trialCreditsMsg = document.getElementById('trialCreditsMsg');
+const trialError = document.getElementById('trialError');
+const cancelTrialBtn = document.getElementById('cancelTrialBtn');
+
 const PREFS_STORAGE_KEY = 'ocr_magic_prefs_v1';
 const GOOGLE_KEY_STORAGE_KEY = 'ocr_magic_google_key_enc_v1';
 const GOOGLE_KEY_CONSENT_KEY = 'ocr_magic_google_key_cookie_consent_v1';

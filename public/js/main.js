@@ -12,6 +12,10 @@ const init = async () => {
 };
 
 const setupEventListeners = () => {
+    try { _setupEventListeners(); } catch (e) { console.error('setupEventListeners FAILED:', e); }
+};
+
+const _setupEventListeners = () => {
     if (addFilesBtn) {
         addFilesBtn.addEventListener('click', () => fileInput.click());
     }
@@ -75,28 +79,28 @@ const setupEventListeners = () => {
         }
     });
 
-    clearAllBtn.addEventListener('click', clearAll);
-    downloadAllBtn.addEventListener('click', openExportModal);
+    if (clearAllBtn) clearAllBtn.addEventListener('click', clearAll);
+    if (downloadAllBtn) downloadAllBtn.addEventListener('click', openExportModal);
 
-    processBtn.addEventListener('click', handleProcessClick);
-    copyBtn.addEventListener('click', copyToClipboard);
-    cancelReviewBtn.addEventListener('click', closeReviewModal);
-    confirmReviewBtn.addEventListener('click', startBatchProcessing);
-    cancelExportBtn.addEventListener('click', closeExportModal);
-    exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
-    exportZipBtn.addEventListener('click', downloadAllZip);
-    exportPdfBtn.addEventListener('click', downloadPdf);
-    emailProcessBtn.addEventListener('click', openEmailOtpModalSafe);
+    if (processBtn) processBtn.addEventListener('click', handleProcessClick);
+    if (copyBtn) copyBtn.addEventListener('click', copyToClipboard);
+    if (cancelReviewBtn) cancelReviewBtn.addEventListener('click', closeReviewModal);
+    if (confirmReviewBtn) confirmReviewBtn.addEventListener('click', startBatchProcessing);
+    if (cancelExportBtn) cancelExportBtn.addEventListener('click', closeExportModal);
+    if (exportCombinedBtn) exportCombinedBtn.addEventListener('click', downloadCombinedTxt);
+    if (exportZipBtn) exportZipBtn.addEventListener('click', downloadAllZip);
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', downloadPdf);
+    if (emailProcessBtn) emailProcessBtn.addEventListener('click', openEmailOtpModalSafe);
     if (emailFormatZipBtn) emailFormatZipBtn.addEventListener('click', () => setEmailFormat('zip'));
     if (emailFormatPdfBtn) emailFormatPdfBtn.addEventListener('click', () => setEmailFormat('pdf'));
-    sendOtpBtn.addEventListener('click', handleSendOtp);
-    verifyAndSendBtn.addEventListener('click', handleVerifyAndSubmitJob);
-    resendOtpBtn.addEventListener('click', handleSendOtp);
-    cancelEmailBtn.addEventListener('click', closeEmailOtpModal);
-    appAlertCancelBtn.addEventListener('click', () => resolveAppAlert(false));
-    appAlertConfirmBtn.addEventListener('click', () => resolveAppAlert(true));
-    appAlertModal.addEventListener('click', (e) => {
-        if (e.target === appAlertModal && !appAlertCancelBtn.classList.contains('hidden')) {
+    if (sendOtpBtn) sendOtpBtn.addEventListener('click', handleSendOtp);
+    if (verifyAndSendBtn) verifyAndSendBtn.addEventListener('click', handleVerifyAndSubmitJob);
+    if (resendOtpBtn) resendOtpBtn.addEventListener('click', handleSendOtp);
+    if (cancelEmailBtn) cancelEmailBtn.addEventListener('click', closeEmailOtpModal);
+    if (appAlertCancelBtn) appAlertCancelBtn.addEventListener('click', () => resolveAppAlert(false));
+    if (appAlertConfirmBtn) appAlertConfirmBtn.addEventListener('click', () => resolveAppAlert(true));
+    if (appAlertModal) appAlertModal.addEventListener('click', (e) => {
+        if (e.target === appAlertModal && appAlertCancelBtn && !appAlertCancelBtn.classList.contains('hidden')) {
             resolveAppAlert(false);
         }
     });
@@ -134,9 +138,9 @@ const setupEventListeners = () => {
         });
     }
 
-    themeToggleBtn.addEventListener('click', toggleTheme);
-    languageSelect.addEventListener('change', saveUserPreferences);
-    ocrEngineSelect.addEventListener('change', async () => {
+    if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+    if (languageSelect) languageSelect.addEventListener('change', saveUserPreferences);
+    if (ocrEngineSelect) ocrEngineSelect.addEventListener('change', async () => {
         if (isGoogleVisionSelected()) {
             await ensureGoogleKeyStorageConsent();
         }
@@ -150,8 +154,8 @@ const setupEventListeners = () => {
         updateEngineUI();
         updateGlobalButtons();
     });
-    openRouterOutputFormatSelect.addEventListener('change', saveUserPreferences);
-    googleVisionApiKeyInput.addEventListener('input', async () => {
+    if (openRouterOutputFormatSelect) openRouterOutputFormatSelect.addEventListener('change', saveUserPreferences);
+    if (googleVisionApiKeyInput) googleVisionApiKeyInput.addEventListener('input', async () => {
         await persistGoogleKeyIfAllowed();
         updateGlobalButtons();
     });
@@ -161,7 +165,7 @@ const setupEventListeners = () => {
             updateGlobalButtons();
         });
     }
-    openRouterApiKeyInput.addEventListener('input', async () => {
+    if (openRouterApiKeyInput) openRouterApiKeyInput.addEventListener('input', async () => {
         await persistOpenRouterKeyIfAllowed();
         updateGlobalButtons();
     });
@@ -177,6 +181,13 @@ const setupEventListeners = () => {
             updateGlobalButtons();
         });
     }
+
+    if (getTrialKeyBtn) getTrialKeyBtn.addEventListener('click', openTrialModal);
+    if (cancelTrialBtn) cancelTrialBtn.addEventListener('click', closeTrialModal);
+    if (trialSendOtpBtn) trialSendOtpBtn.addEventListener('click', handleTrialSendOtp);
+    if (trialResendOtpBtn) trialResendOtpBtn.addEventListener('click', handleTrialSendOtp);
+    if (trialClaimBtn) trialClaimBtn.addEventListener('click', handleTrialClaim);
+    if (trialModal) trialModal.addEventListener('click', (e) => { if (e.target === trialModal) closeTrialModal(); });
 
     document.querySelectorAll('.btn-toggle-visibility').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -209,37 +220,31 @@ const setupEventListeners = () => {
         });
     });
 
-    selectColumnsBtn.addEventListener('click', () => {
+    if (selectColumnsBtn) selectColumnsBtn.addEventListener('click', () => {
         if (!activeFileId) return;
         columnsModal.classList.remove('hidden');
     });
 
-    cancelColumnsBtn.addEventListener('click', () => {
+    if (cancelColumnsBtn) cancelColumnsBtn.addEventListener('click', () => {
         columnsModal.classList.add('hidden');
     });
 
     columnOptions.forEach(btn => {
         btn.addEventListener('click', async () => {
             const cols = parseInt(btn.dataset.cols, 10);
+            columnsModal.classList.add('hidden');
 
             const file = filesData.find(f => f.id === activeFileId);
             if (cols > 1 && file && file.type === 'pdf' && file.pages.length === 0) {
                 const targetPage = file.activeViewerPage || 1;
-                columnsModal.classList.add('opacity-50');
-                columnsModal.style.pointerEvents = 'none';
-
                 const oldUrl = file.previewUrl;
                 await generatePdfThumbnail(file, targetPage);
                 if (oldUrl && oldUrl !== 'https://placehold.co/50x70?text=PDF') {
                     URL.revokeObjectURL(oldUrl);
                 }
-
-                columnsModal.classList.remove('opacity-50');
-                columnsModal.style.pointerEvents = 'auto';
             }
 
             setupColumns(cols);
-            columnsModal.classList.add('hidden');
         });
     });
 
@@ -271,8 +276,8 @@ const setupEventListeners = () => {
         recenterPreviewView();
     });
 
-    previewContainer.addEventListener('wheel', handleZoomWheel, { passive: false });
-    previewContainer.addEventListener('mousedown', handlePanStart);
+    if (previewContainer) previewContainer.addEventListener('wheel', handleZoomWheel, { passive: false });
+    if (previewContainer) previewContainer.addEventListener('mousedown', handlePanStart);
     document.addEventListener('mousemove', handlePanMove);
     document.addEventListener('mouseup', handlePanEnd);
 };
