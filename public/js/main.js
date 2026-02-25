@@ -3,6 +3,7 @@
 const init = async () => {
     initTheme();
     setupEventListeners();
+    initOnboarding();
     await fetchServerConfig();
     await loadUserPreferences();
     updateEngineUI();

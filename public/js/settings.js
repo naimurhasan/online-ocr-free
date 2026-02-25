@@ -150,6 +150,7 @@ const resetAllSettings = async () => {
     localStorage.removeItem(GEMINI_KEY_CONSENT_KEY);
     localStorage.removeItem(OPENROUTER_KEY_STORAGE_KEY);
     localStorage.removeItem(OPENROUTER_KEY_CONSENT_KEY);
+    localStorage.removeItem('ocr_magic_onboarding_done_v1');
 
     languageSelect.value = 'eng';
     ocrEngineSelect.value = 'tesseract';

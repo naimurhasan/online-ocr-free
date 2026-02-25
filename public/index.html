@@ -17,6 +17,144 @@
 
 <body>
 
+    <!-- Onboarding Wizard Overlay -->
+    <div id="onboardingOverlay" class="onboarding-overlay hidden">
+        <button id="onboardingThemeToggle" class="onboarding-theme-btn" title="Toggle Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+
+        <div class="onboarding-stepper">
+            <div class="stepper-step active" data-step="0">
+                <div class="stepper-circle">1</div>
+                <span class="stepper-label">Upload</span>
+            </div>
+            <div class="stepper-line"></div>
+            <div class="stepper-step" data-step="1">
+                <div class="stepper-circle">2</div>
+                <span class="stepper-label">Settings</span>
+            </div>
+            <div class="stepper-line"></div>
+            <div class="stepper-step" data-step="2">
+                <div class="stepper-circle">3</div>
+                <span class="stepper-label">Ready!</span>
+            </div>
+        </div>
+
+        <div class="onboarding-panels">
+            <!-- Step 1: Upload -->
+            <div class="onboarding-panel" data-panel="0">
+                <div class="onboarding-panel-inner">
+                    <h2><i class="fas fa-cloud-upload-alt"></i> Upload Your Files</h2>
+                    <p class="onboarding-subtitle">Welcome to OCR Magic! Start by dropping your PDF or image files below.</p>
+
+                    <div id="onboardingDropZone" class="onboarding-drop-zone">
+                        <i class="fas fa-file-image onboarding-drop-icon"></i>
+                        <p>Drag & drop files here</p>
+                        <span class="onboarding-drop-or">or</span>
+                        <button id="onboardingBrowseBtn" class="btn-secondary onboarding-browse-btn">
+                            <i class="fas fa-folder-open"></i> Browse Files
+                        </button>
+                        <p class="onboarding-drop-hint">Supported: PDF, PNG, JPG, TIFF, BMP, WebP</p>
+                    </div>
+
+                    <div id="onboardingFileList" class="onboarding-file-list hidden"></div>
+
+                    <div class="onboarding-nav onboarding-nav-end">
+                        <button id="onboardingUploadNext" class="btn-primary onboarding-btn-next" disabled>
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Settings -->
+            <div class="onboarding-panel hidden" data-panel="1">
+                <div class="onboarding-panel-inner">
+                    <h2><i class="fas fa-cogs"></i> Choose Your Settings</h2>
+                    <p class="onboarding-subtitle">Pick the language of your documents and an OCR engine.</p>
+
+                    <div class="onboarding-setting-group">
+                        <label class="onboarding-label">Document Language</label>
+                        <select id="onboardingLanguage" class="onboarding-select"></select>
+                    </div>
+
+                    <div class="onboarding-setting-group">
+                        <label class="onboarding-label">OCR Engine</label>
+                        <div class="onboarding-engine-cards">
+                            <button class="onboarding-engine-card active" data-engine="tesseract">
+                                <div class="engine-card-icon"><i class="fas fa-robot"></i></div>
+                                <strong>Tesseract OCR</strong>
+                                <span class="engine-card-badge free">Free</span>
+                                <p>Works offline. Good for clean documents.</p>
+                            </button>
+                            <button class="onboarding-engine-card" data-engine="google-vision">
+                                <div class="engine-card-icon"><i class="fas fa-cloud"></i></div>
+                                <strong>Google Vision</strong>
+                                <span class="engine-card-badge trial">Free Trial</span>
+                                <p>Cloud-based. Best accuracy for most documents.</p>
+                            </button>
+                        </div>
+                        <p id="onboardingTrialHint" class="onboarding-trial-hint hidden">
+                            <i class="fas fa-info-circle"></i>
+                            You can claim 100 free Google Vision OCR credits from the dashboard.
+                        </p>
+                        <div class="onboarding-more-engines">
+                            <label class="onboarding-more-label"><i class="fas fa-ellipsis-h"></i> Or choose another engine:</label>
+                            <select id="onboardingEngineSelect" class="onboarding-select">
+                                <option value="">-- Select from all engines --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="onboarding-nav">
+                        <button class="btn-secondary onboarding-btn-back" data-goto="0">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button id="onboardingSettingsNext" class="btn-primary onboarding-btn-next">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Ready -->
+            <div class="onboarding-panel hidden" data-panel="2">
+                <div class="onboarding-panel-inner onboarding-ready-panel">
+                    <div class="onboarding-ready-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2>You're All Set!</h2>
+                    <p class="onboarding-subtitle">Here's a summary of your setup:</p>
+
+                    <div class="onboarding-summary">
+                        <div class="onboarding-summary-row">
+                            <span>Files</span>
+                            <strong id="onboardingSummaryFiles">0 files</strong>
+                        </div>
+                        <div class="onboarding-summary-row">
+                            <span>Language</span>
+                            <strong id="onboardingSummaryLang">English</strong>
+                        </div>
+                        <div class="onboarding-summary-row">
+                            <span>Engine</span>
+                            <strong id="onboardingSummaryEngine">Tesseract OCR</strong>
+                        </div>
+                    </div>
+
+                    <label class="onboarding-dont-show">
+                        <input type="checkbox" id="onboardingDontShow">
+                        <span>Don't show this again</span>
+                    </label>
+
+                    <button id="onboardingFinishBtn" class="btn-primary onboarding-btn-finish">
+                        Go to Dashboard <i class="fas fa-rocket"></i>
+                    </button>
+                    <p class="onboarding-ready-hint">You can change any of these settings anytime from the toolbar.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <header class="toolbar">
             <div class="logo">
@@ -132,6 +270,10 @@
 
                 <button id="advancedSettingsBtn" class="theme-toggle-btn" title="Advanced Settings">
                     <i class="fas fa-cog"></i>
+                </button>
+
+                <button id="tutorialBtn" class="theme-toggle-btn" title="Watch Tutorial">
+                    <i class="fas fa-tv"></i>
                 </button>
 
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
@@ -495,6 +637,20 @@
             </div>
         </div>
     </div>
+    <div id="tutorialModal" class="modal hidden">
+        <div class="modal-content tutorial-modal-content">
+            <h3 style="text-align: center; margin-bottom: 1rem;"><i class="fas fa-tv"></i> Tutorial</h3>
+            <div class="tutorial-video-wrap">
+                <iframe id="tutorialVideo" src="" title="OCR Magic Tutorial" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 1.25rem;">
+                <button id="closeTutorialBtn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast">Copied to clipboard!</div>
 
     <script src="js/state.js"></script>
@@ -505,6 +661,7 @@
     <script src="js/ocrProcessor.js"></script>
     <script src="js/emailFlow.js"></script>
     <script src="js/trialFlow.js"></script>
+    <script src="js/onboarding.js"></script>
     <script src="js/main.js"></script>
 </body>
 
