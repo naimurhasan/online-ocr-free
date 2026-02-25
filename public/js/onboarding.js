@@ -20,6 +20,10 @@ const onboardingSummaryLang = document.getElementById('onboardingSummaryLang');
 const onboardingSummaryEngine = document.getElementById('onboardingSummaryEngine');
 const onboardingTrialHint = document.getElementById('onboardingTrialHint');
 
+const onboardingTutorialToggle = document.getElementById('onboardingTutorialToggle');
+const onboardingTutorialWrap = document.getElementById('onboardingTutorialWrap');
+const onboardingTutorialIframe = document.getElementById('onboardingTutorialIframe');
+
 const tutorialBtn = document.getElementById('tutorialBtn');
 const tutorialModal = document.getElementById('tutorialModal');
 const tutorialVideo = document.getElementById('tutorialVideo');
@@ -118,6 +122,20 @@ const setupOnboardingListeners = () => {
         onboardingThemeToggle.addEventListener('click', () => {
             toggleTheme();
             syncOnboardingThemeIcon();
+        });
+    }
+
+    // Tutorial video toggle
+    if (onboardingTutorialToggle) {
+        onboardingTutorialToggle.addEventListener('click', () => {
+            const isHidden = onboardingTutorialWrap.classList.contains('hidden');
+            onboardingTutorialWrap.classList.toggle('hidden', !isHidden);
+            onboardingTutorialToggle.classList.toggle('expanded', isHidden);
+            if (isHidden && onboardingTutorialIframe) {
+                onboardingTutorialIframe.src = TUTORIAL_VIDEO_URL;
+            } else if (!isHidden && onboardingTutorialIframe) {
+                onboardingTutorialIframe.src = '';
+            }
         });
     }
 
@@ -335,6 +353,9 @@ const finishOnboarding = () => {
 
     onboardingActive = false;
     fileInput.removeEventListener('change', onboardingFileInputHandler);
+
+    // Stop tutorial video if playing
+    if (onboardingTutorialIframe) onboardingTutorialIframe.src = '';
 
     // Fade out overlay
     onboardingOverlay.style.opacity = '0';

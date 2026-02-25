@@ -47,6 +47,18 @@
                     <h2><i class="fas fa-cloud-upload-alt"></i> Upload Your Files</h2>
                     <p class="onboarding-subtitle">Welcome to OCR Magic! Start by dropping your PDF or image files below.</p>
 
+                    <button id="onboardingTutorialToggle" class="onboarding-tutorial-toggle">
+                        <i class="fas fa-play-circle"></i> Watch a quick tutorial
+                        <i class="fas fa-chevron-down onboarding-tutorial-chevron"></i>
+                    </button>
+                    <div id="onboardingTutorialWrap" class="onboarding-tutorial-wrap hidden">
+                        <div class="onboarding-tutorial-video">
+                            <iframe id="onboardingTutorialIframe" src="" title="OCR Magic Tutorial" frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                        </div>
+                    </div>
+
                     <div id="onboardingDropZone" class="onboarding-drop-zone">
                         <i class="fas fa-file-image onboarding-drop-icon"></i>
                         <p>Drag & drop files here</p>

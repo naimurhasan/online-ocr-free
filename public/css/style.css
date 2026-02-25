@@ -501,13 +501,15 @@ select {
 
 .btn-trial-key {
     font-size: 0.75rem;
-    padding: 4px 10px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
+    padding: 0 10px;
+    height: 38px;
+    background: var(--primary-color);
+    color: var(--primary-text);
     border: none;
     border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
+    font-weight: 500;
 }
 .btn-trial-key:hover { opacity: 0.85; }
 
@@ -1801,6 +1803,63 @@ select,
     color: var(--accent-color);
     margin-bottom: 2rem;
     line-height: 1.5;
+}
+
+/* Tutorial Toggle (Step 1) */
+.onboarding-tutorial-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.onboarding-tutorial-toggle:hover {
+    border-color: var(--primary-color);
+    color: var(--text-color);
+}
+
+.onboarding-tutorial-toggle.expanded {
+    border-color: var(--primary-color);
+    color: var(--text-color);
+}
+
+.onboarding-tutorial-chevron {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.onboarding-tutorial-toggle.expanded .onboarding-tutorial-chevron {
+    transform: rotate(180deg);
+}
+
+.onboarding-tutorial-wrap {
+    margin-bottom: 1.25rem;
+}
+
+.onboarding-tutorial-video {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+}
+
+.onboarding-tutorial-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 /* Drop Zone */
