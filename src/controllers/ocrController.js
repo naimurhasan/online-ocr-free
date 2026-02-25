@@ -133,7 +133,7 @@ exports.downloadZip = async (req, res) => {
         return res.status(400).json({ error: 'No content to zip' });
     }
 
-    res.attachment('ocr_results.zip');
+    res.attachment('onlineocrfree_results.zip');
 
     const archive = archiver('zip', {
         zlib: { level: 9 }

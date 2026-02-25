@@ -4,10 +4,11 @@ const { getLanguageLabel, getFormatInstruction, buildOcrPrompt } = require('../.
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const REQUEST_TIMEOUT_MS = 120_000;
 const OPENROUTER_MODELS = {
-    'gemma-openrouter-free': 'google/gemma-3-27b-it:free',
-    'gemma-openrouter-paid': 'google/gemma-3-27b-it',
-    'mistral-openrouter-free': 'mistralai/mistral-small-3.1-24b-instruct:free',
-    'mistral-openrouter-paid': 'mistralai/mistral-small-3.1-24b-instruct'
+    'mistral-openrouter': 'mistralai/mistral-small-3.1-24b-instruct',
+    'gemma-openrouter': 'google/gemma-3-27b-it',
+    'qwen-vl-openrouter': 'qwen/qwen2.5-vl-32b-instruct',
+    'gemini-flash-openrouter': 'google/gemini-2.0-flash-exp',
+    'nemotron-openrouter': 'nvidia/nemotron-nano-12b-v2-vl'
 };
 
 const isOpenRouterEngine = (engine) => {

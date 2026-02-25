@@ -19,10 +19,11 @@ const isGoogleVisionSelected = () => ocrEngineSelect && ocrEngineSelect.value ==
 const isGeminiSelected = () => ocrEngineSelect && (ocrEngineSelect.value === 'gemini-flash' || ocrEngineSelect.value === 'gemini-custom');
 const isGeminiCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'gemini-custom';
 const isOpenRouterSelected = () => ocrEngineSelect && (
-    ocrEngineSelect.value === 'gemma-openrouter-free' ||
-    ocrEngineSelect.value === 'gemma-openrouter-paid' ||
-    ocrEngineSelect.value === 'mistral-openrouter-free' ||
-    ocrEngineSelect.value === 'mistral-openrouter-paid' ||
+    ocrEngineSelect.value === 'mistral-openrouter' ||
+    ocrEngineSelect.value === 'gemma-openrouter' ||
+    ocrEngineSelect.value === 'qwen-vl-openrouter' ||
+    ocrEngineSelect.value === 'gemini-flash-openrouter' ||
+    ocrEngineSelect.value === 'nemotron-openrouter' ||
     ocrEngineSelect.value === 'openrouter-custom'
 );
 const isOpenRouterCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value === 'openrouter-custom';

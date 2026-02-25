@@ -3,10 +3,11 @@ const { isOpenRouterEngine, OPENROUTER_MODELS } = require('../../src/services/en
 describe('openRouter engine helpers', () => {
     describe('isOpenRouterEngine', () => {
         test('returns true for known OpenRouter engines', () => {
-            expect(isOpenRouterEngine('gemma-openrouter-free')).toBe(true);
-            expect(isOpenRouterEngine('gemma-openrouter-paid')).toBe(true);
-            expect(isOpenRouterEngine('mistral-openrouter-free')).toBe(true);
-            expect(isOpenRouterEngine('mistral-openrouter-paid')).toBe(true);
+            expect(isOpenRouterEngine('mistral-openrouter')).toBe(true);
+            expect(isOpenRouterEngine('gemma-openrouter')).toBe(true);
+            expect(isOpenRouterEngine('qwen-vl-openrouter')).toBe(true);
+            expect(isOpenRouterEngine('gemini-flash-openrouter')).toBe(true);
+            expect(isOpenRouterEngine('nemotron-openrouter')).toBe(true);
         });
 
         test('returns true for openrouter-custom', () => {
@@ -23,14 +24,15 @@ describe('openRouter engine helpers', () => {
 
     describe('OPENROUTER_MODELS', () => {
         test('contains expected model mappings', () => {
-            expect(OPENROUTER_MODELS['gemma-openrouter-free']).toBe('google/gemma-3-27b-it:free');
-            expect(OPENROUTER_MODELS['gemma-openrouter-paid']).toBe('google/gemma-3-27b-it');
-            expect(OPENROUTER_MODELS['mistral-openrouter-free']).toBe('mistralai/mistral-small-3.1-24b-instruct:free');
-            expect(OPENROUTER_MODELS['mistral-openrouter-paid']).toBe('mistralai/mistral-small-3.1-24b-instruct');
+            expect(OPENROUTER_MODELS['mistral-openrouter']).toBe('mistralai/mistral-small-3.1-24b-instruct');
+            expect(OPENROUTER_MODELS['gemma-openrouter']).toBe('google/gemma-3-27b-it');
+            expect(OPENROUTER_MODELS['qwen-vl-openrouter']).toBe('qwen/qwen2.5-vl-32b-instruct');
+            expect(OPENROUTER_MODELS['gemini-flash-openrouter']).toBe('google/gemini-2.0-flash-exp');
+            expect(OPENROUTER_MODELS['nemotron-openrouter']).toBe('nvidia/nemotron-nano-12b-v2-vl');
         });
 
-        test('has exactly 4 models', () => {
-            expect(Object.keys(OPENROUTER_MODELS)).toHaveLength(4);
+        test('has exactly 5 models', () => {
+            expect(Object.keys(OPENROUTER_MODELS)).toHaveLength(5);
         });
     });
 });

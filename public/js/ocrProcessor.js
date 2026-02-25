@@ -486,7 +486,7 @@ const downloadCombinedTxt = async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ocr_results_combined_${Date.now()}.txt`;
+    a.download = `onlineocrfree_combined_${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -512,7 +512,7 @@ const downloadAllZip = async () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'ocr_results_' + Date.now() + '.zip';
+            a.download = 'onlineocrfree_' + Date.now() + '.zip';
             a.click();
             URL.revokeObjectURL(url);
             await promptGithubStarAfterExport();

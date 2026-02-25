@@ -30,18 +30,24 @@ const getLanguageLabel = (lang = 'eng') => {
 
 const getFormatInstruction = (format) => {
     if (format === 'markdown') {
-        return `Return valid Markdown that preserves the document's visual structure.
-Rules for structure preservation:
-- Use # for main titles, ## for section headings, ### for subsections — match the visual hierarchy.
-- Use standard paragraphs with blank lines between them.
-- Reproduce tables using Markdown table syntax (| col1 | col2 |) with alignment.
-- Use - or * for bulleted lists, 1. 2. 3. for numbered lists.
-- For multi-column layouts: transcribe left column first, then right column, separated by a horizontal rule (---).
-- For addresses, signatures, dates, or header/footer blocks: preserve line breaks using two trailing spaces.
-- Bold (**text**) for visually bold text; italic (*text*) for italicized text.
-- For mathematical expressions: use LaTeX notation with $...$ for inline math and $$...$$ for display/block math.
-- If the document has a letterhead or form fields, preserve the structure using bold labels and indented values.
-- Do not add commentary, summaries, or extra content. Do not wrap output in code fences.`;
+        return `Return valid Markdown and HTML that strictly preserves the visual and structural layout of the document.
+
+### Rules for Structure Preservation:
+- **Layout Detection (CRITICAL):**
+    - If the image has a **multi-column layout**, you MUST use an HTML \`<table>\` with \`style="border: none; border-collapse: collapse; width: 100%;"\` to represent text side-by-side.
+    - Ensure all \`<td>\` and \`<tr>\` tags include \`style="border: none; vertical-align: top;"\` to ensure no borders are rendered and text aligns to the top.
+    - If the image is a **single-column layout**, use standard paragraphs and headings.
+- **Hierarchy:** Use appropriate Markdown headers (#, ##, ###) or bold text to match visual importance.
+- **Mathematical Expressions:** You **must** use $...$ for inline math and $$...$$ for block math. Do not use \\( or \\[.
+- **Formatting:** Use **bold** for visually bold text and *italics* for italicized text.
+- **Lists:** Use Markdown syntax for bullets or numbered lists.
+- **Accuracy:** Transcribe text exactly as written, including punctuation and capitalization.
+
+### Output Constraints:
+- Do not add commentary or summaries.
+- Do not translate the text.
+- Return only the Markdown/HTML content.
+- Since standard Markdown tables (|---|) always show borders, **use HTML tables for multi-column layouts to ensure a borderless appearance.**`;
     }
     return 'Return plain text only. Preserve line breaks and reading order. Do not add commentary.';
 };
@@ -53,7 +59,7 @@ const buildOcrPrompt = (formatInstruction, languageHint, customPrompt) => {
             .replace('{{FORMAT_INSTRUCTION}}', formatInstruction)
             .replace('{{LANGUAGE_HINT}}', languageHint || 'auto');
     }
-    return `You are an OCR engine. Extract all readable text from this image.\nRules:\n- ${formatInstruction}\n- Do not translate text.\nLanguage hint: ${languageHint || 'auto'}.`;
+    return `You are an advanced OCR engine. Extract all readable text from this image.\n${formatInstruction}\nLanguage hint: ${languageHint || 'auto'}.`;
 };
 
 module.exports = {

@@ -14,7 +14,7 @@
     "tesseract",
     "nodejs"
   ],
-  "author": "Antigravity",
+  "author": "naimurhasanrwd",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",

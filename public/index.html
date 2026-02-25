@@ -484,10 +484,11 @@
                         <option value="google-vision">Google Vision API</option>
                         <option value="gemini-flash">Gemini Flash (Google AI)</option>
                         <option value="gemini-custom">Custom Model (Google AI)</option>
-                        <option value="gemma-openrouter-free">Gemma 3 27B (OpenRouter Free)</option>
-                        <option value="gemma-openrouter-paid">Gemma 3 27B (OpenRouter Paid)</option>
-                        <option value="mistral-openrouter-free">Mistral Small 3.1 24B (OpenRouter Free)</option>
-                        <option value="mistral-openrouter-paid">Mistral Small 3.1 24B (OpenRouter Paid)</option>
+                        <option value="mistral-openrouter">Mistral Small 3.1 24B (OpenRouter)</option>
+                        <option value="gemma-openrouter">Gemma 3 27B (OpenRouter)</option>
+                        <option value="qwen-vl-openrouter">Qwen 2.5 VL 32B (OpenRouter)</option>
+                        <option value="gemini-flash-openrouter">Gemini 2.0 Flash (OpenRouter)</option>
+                        <option value="nemotron-openrouter">Nemotron Nano 12B VL (OpenRouter)</option>
                         <option value="openrouter-custom">Custom Model (OpenRouter)</option>
                     </select>
                 </div>
@@ -540,7 +541,7 @@
                     <i class="fas fa-tv"></i>
                 </button>
                 <button id="githubStarBtn" class="theme-toggle-btn github-star-btn" title="Star on GitHub">
-                    <i class="fas fa-star"></i>
+                    <i class="fab fa-github"></i>
                 </button>
 
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
@@ -930,6 +931,19 @@
     <script src="js/trialFlow.js"></script>
     <script src="js/onboarding.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        // Defer Google Analytics to avoid blocking page load
+        window.addEventListener('load', function () {
+            var s = document.createElement('script');
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=G-87ZF63GTHW';
+            s.async = true;
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', 'G-87ZF63GTHW');
+        });
+    </script>
 </body>
 
 </html>
