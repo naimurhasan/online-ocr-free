@@ -348,6 +348,9 @@ const openReviewModal = () => {
         }
     }
 
+    const promptRow = document.getElementById('reviewCustomPromptRow');
+    if (promptRow) promptRow.classList.toggle('hidden', !advancedSettings.customPrompt);
+
     reviewModal.classList.remove('hidden');
 };
 
