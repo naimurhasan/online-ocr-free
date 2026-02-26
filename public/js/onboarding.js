@@ -25,11 +25,9 @@ const onboardingTutorialWrap = document.getElementById('onboardingTutorialWrap')
 const onboardingTutorialIframe = document.getElementById('onboardingTutorialIframe');
 
 const tutorialBtn = document.getElementById('tutorialBtn');
-const githubStarBtn = document.getElementById('githubStarBtn');
 const tutorialModal = document.getElementById('tutorialModal');
 const tutorialVideo = document.getElementById('tutorialVideo');
 const closeTutorialBtn = document.getElementById('closeTutorialBtn');
-const TUTORIAL_GITHUB_STAR_URL = 'https://github.com/naimurhasan/online-ocr-free.git';
 
 let onboardingCurrentStep = 0;
 let onboardingSelectedEngine = 'tesseract';
@@ -94,11 +92,6 @@ const syncOnboardingThemeIcon = () => {
 const setupTutorialListeners = () => {
     if (tutorialBtn) {
         tutorialBtn.addEventListener('click', openTutorialModal);
-    }
-    if (githubStarBtn) {
-        githubStarBtn.addEventListener('click', () => {
-            window.open(TUTORIAL_GITHUB_STAR_URL, '_blank', 'noopener,noreferrer');
-        });
     }
     if (closeTutorialBtn) {
         closeTutorialBtn.addEventListener('click', closeTutorialModal);

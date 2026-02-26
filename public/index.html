@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Free Online OCR for PDF & Images | Bangla, English & 60+ Languages - onlineocrfree</title>
     <meta name="description" content="Convert scanned PDF and images to text instantly. Free OCR with Bangla support, multi-page PDF, batch processing, column splitting, and AI-powered text extraction. Supports 60+ languages.">
-    <meta name="keywords" content="online ocr, free pdf ocr, bangla ocr online, image to text, pdf to text free, scanned pdf to text, bengali ocr, batch ocr, bulk ocr, ocr multiple pdf documents, open source ocr">
+    <meta name="keywords" content="online ocr, free pdf ocr, bangla ocr online, image to text, pdf to text free, scanned pdf to text, bengali ocr, batch ocr, bulk ocr, ocr multiple pdf documents, open source ocr, ocr translate, image to bangla translation, ocr with translation">
     <link rel="canonical" href="https://onlineocrfree.com/">
 
     <!-- Open Graph -->
@@ -104,6 +104,22 @@
                 "acceptedAnswer": {
                     "@type": "Answer",
                     "text": "No account or signup required. Upload your files and start extracting text immediately. Your preferences are saved locally in your browser."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I translate extracted text using OCR?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Use an AI engine (Gemini, OpenRouter) and set a custom prompt in Advanced Settings to translate extracted text into any language — for example, translate English documents into Bangla while preserving the original layout and formatting."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I bulk OCR multiple files at once?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, onlineocrfree supports bulk OCR. Upload multiple images or PDFs, configure concurrent threads in Advanced Settings, and process them all at once. Results can be exported as a combined TXT, ZIP, or PDF."
                 }
             }
         ]
@@ -406,6 +422,50 @@
                             <summary>Do I need to create an account?</summary>
                             <p>No account or signup required. Upload your files and start extracting text immediately. Your preferences are saved locally in your browser.</p>
                         </details>
+                        <details class="seo-faq-item">
+                            <summary>Can I translate extracted text using OCR?</summary>
+                            <p>Yes! Use an AI engine (Gemini, OpenRouter) and set a custom prompt in <strong>Advanced Settings</strong> to translate extracted text into any language — for example, translate English documents into Bangla while preserving the original layout and formatting. Here's a sample prompt you can paste:</p>
+                            <details class="seo-faq-prompt">
+                                <summary>Show sample translation prompt (English → Bangla)</summary>
+                                <pre class="seo-faq-code">You are an advanced OCR engine. Extract all readable text from this image.
+After completing the extraction and layout reconstruction, **translate the entire content into Bangla**, strictly preserving the exact same visual and structural format.
+
+Return valid Markdown and HTML that strictly preserves the visual and structural layout of the document.
+
+---
+
+### Rules for Structure Preservation:
+
+* **Layout Detection (CRITICAL):**
+
+  * If the image has a **multi-column layout**, you MUST use an HTML `&lt;table&gt;` with `style="border: none; border-collapse: collapse; width: 100%;"` to represent text side-by-side.
+  * Ensure all `&lt;td&gt;` and `&lt;tr&gt;` tags include `style="border: none; vertical-align: top;"` to ensure no borders are rendered and text aligns to the top.
+  * If the image is a **single-column layout**, use standard paragraphs and headings.
+
+* **Hierarchy:** Use appropriate Markdown headers (#, ##, ###) or bold text to match visual importance.
+
+* **Mathematical Expressions:** You **must** use $...$ for inline math and $$...$$ for block math.
+
+* **Formatting:** Use **bold** for visually bold text and *italics* for italicized text.
+
+* **Lists:** Use Markdown syntax for bullets or numbered lists.
+
+* **Accuracy:** First transcribe text exactly as written. Then translate all textual content into Bangla while keeping the same structure, formatting, table layout, line breaks, emphasis, and mathematical notation.
+
+---
+
+### Output Constraints:
+
+* Do not add commentary or summaries.
+* Do not include the original language in the final output.
+* Return only the Bangla-translated Markdown/HTML content.
+* Use HTML tables for multi-column layouts to ensure a borderless appearance.</pre>
+                            </details>
+                        </details>
+                        <details class="seo-faq-item">
+                            <summary>Can I bulk OCR multiple files at once?</summary>
+                            <p>Yes, onlineocrfree supports bulk OCR. Upload multiple images or PDFs, configure concurrent threads in <strong>Advanced Settings</strong>, and process them all at once. Results can be exported as a combined TXT, ZIP, or PDF.</p>
+                        </details>
                     </div>
                 </div>
             </section>
@@ -541,9 +601,6 @@
 
                 <button id="tutorialBtn" class="theme-toggle-btn" title="Watch Tutorial">
                     <i class="fas fa-tv"></i>
-                </button>
-                <button id="githubStarBtn" class="theme-toggle-btn github-star-btn" title="Star on GitHub">
-                    <i class="fab fa-github"></i>
                 </button>
 
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">

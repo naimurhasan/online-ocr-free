@@ -621,9 +621,6 @@ button {
     justify-content: center;
 }
 
-.github-star-btn i {
-    color: #f59e0b;
-}
 
 .empty-state {
     text-align: center;
@@ -2488,6 +2485,36 @@ select,
     font-size: 0.9rem;
     line-height: 1.7;
     color: var(--accent-color);
+}
+
+.seo-faq-prompt {
+    margin: 0 1.25rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.seo-faq-prompt summary {
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--primary-color);
+}
+
+.seo-faq-code {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 8px 8px;
+    color: var(--text-color);
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 /* Footer */
