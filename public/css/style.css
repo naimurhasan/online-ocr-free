@@ -75,6 +75,28 @@ body {
     flex-shrink: 0;
 }
 
+.open-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    text-decoration: none;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+
+.open-source-badge:hover {
+    opacity: 1;
+}
+
 .global-actions {
     display: flex;
     gap: 0.55rem;
@@ -963,6 +985,10 @@ select,
 
     .logo {
         font-size: 1rem;
+    }
+
+    .open-source-badge {
+        display: none;
     }
 }
 

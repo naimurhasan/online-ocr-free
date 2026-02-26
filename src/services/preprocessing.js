@@ -1,6 +1,9 @@
 const path = require('path');
+const crypto = require('crypto');
 const sharp = require('sharp');
 const fs = require('fs').promises;
+
+const uniqueId = () => `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
 const ensureTempFolder = async () => {
     const tempDir = path.resolve('./temp');
@@ -14,13 +17,13 @@ const ensureTempFolder = async () => {
 
 const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
     const tempDir = await ensureTempFolder();
-    const timestamp = Date.now();
+    const uid = uniqueId();
 
-    const step0Path = path.join(tempDir, `${stepPrefix}_${timestamp}_0_original.png`);
+    const step0Path = path.join(tempDir, `${stepPrefix}_${uid}_0_original.png`);
     await sharp(imagePath).toFile(step0Path);
     console.log('✅ Step 0: Original saved to', step0Path);
 
-    const finalPath = path.join(tempDir, `${stepPrefix}_${timestamp}_final_processed.png`);
+    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
 
     // Grayscale -> Resize -> Normalize -> Sharpen -> Blur (dilation sim) -> Threshold
     await sharp(step0Path)
@@ -43,14 +46,14 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
 
 const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') => {
     const tempDir = await ensureTempFolder();
-    const timestamp = Date.now();
+    const uid = uniqueId();
 
-    const step0Path = path.join(tempDir, `${stepPrefix}_${timestamp}_0_original.png`);
+    const step0Path = path.join(tempDir, `${stepPrefix}_${uid}_0_original.png`);
     await sharp(imagePath).toFile(step0Path);
 
     console.log('🔍 Running Optimized Advanced Preprocessing...');
 
-    const finalPath = path.join(tempDir, `${stepPrefix}_${timestamp}_final_processed.png`);
+    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
 
     // Grayscale -> Median -> Contrast -> Resize -> Sharpen -> Threshold
     await sharp(step0Path)
