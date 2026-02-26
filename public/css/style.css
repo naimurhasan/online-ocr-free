@@ -388,6 +388,21 @@ body {
     outline: none;
 }
 
+.edited-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1.5rem;
+    font-size: 0.8rem;
+    color: var(--primary-color, #4a90d9);
+    background: color-mix(in srgb, var(--primary-color, #4a90d9) 8%, transparent);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edited-indicator i {
+    font-size: 0.7rem;
+}
+
 .action-bar {
     padding: 1rem;
     border-top: 1px solid var(--border-color);
@@ -1608,6 +1623,11 @@ select,
 }
 
 /* Default Prompt Display */
+.adv-default-prompt-wrap {
+    position: relative;
+    margin-top: 0.4rem;
+}
+
 .adv-default-prompt {
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -1619,9 +1639,28 @@ select,
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--accent-color);
-    margin-top: 0.4rem;
+    margin-top: 0;
     max-height: 120px;
     overflow-y: auto;
+}
+
+.adv-copy-prompt-btn {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: var(--text-color);
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+
+.adv-copy-prompt-btn:hover {
+    opacity: 1;
 }
 
 /* Action Row */

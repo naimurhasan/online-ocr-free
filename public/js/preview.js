@@ -433,6 +433,7 @@ const renderResult = () => {
     if (!file) {
         outputText.value = '';
         outputText.disabled = true;
+        hideEditedIndicator();
         updateGlobalButtons();
         return;
     }
@@ -445,7 +446,57 @@ const renderResult = () => {
     }
 
     outputText.disabled = false;
+    updateEditedIndicator();
     updateGlobalButtons();
+};
+
+let editToastShown = false;
+
+const syncTextEditToState = () => {
+    const file = filesData.find(f => f.id === activeFileId);
+    if (!file) return;
+
+    const newText = outputText.value;
+    let changed = false;
+
+    if (file.type === 'pdf') {
+        const page = file.pages[file.currentPage];
+        if (page && page.text !== newText) {
+            page.text = newText;
+            changed = true;
+        }
+    } else {
+        if (file.text !== newText) {
+            file.text = newText;
+            changed = true;
+        }
+    }
+
+    if (changed && !file.edited) {
+        file.edited = true;
+        if (!editToastShown) {
+            editToastShown = true;
+            showToast('Your corrections will be included in export.', 3000);
+        }
+    }
+    updateEditedIndicator();
+};
+
+const updateEditedIndicator = () => {
+    const file = filesData.find(f => f.id === activeFileId);
+    const indicator = document.getElementById('editedIndicator');
+    if (!indicator) return;
+
+    if (file && file.edited) {
+        indicator.classList.remove('hidden');
+    } else {
+        indicator.classList.add('hidden');
+    }
+};
+
+const hideEditedIndicator = () => {
+    const indicator = document.getElementById('editedIndicator');
+    if (indicator) indicator.classList.add('hidden');
 };
 
 const updateGlobalButtons = () => {

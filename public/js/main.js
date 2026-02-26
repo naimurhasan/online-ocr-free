@@ -85,6 +85,7 @@ const _setupEventListeners = () => {
 
     if (processBtn) processBtn.addEventListener('click', handleProcessClick);
     if (copyBtn) copyBtn.addEventListener('click', copyToClipboard);
+    if (outputText) outputText.addEventListener('input', syncTextEditToState);
     if (cancelReviewBtn) cancelReviewBtn.addEventListener('click', closeReviewModal);
     if (confirmReviewBtn) confirmReviewBtn.addEventListener('click', startBatchProcessing);
     if (cancelExportBtn) cancelExportBtn.addEventListener('click', closeExportModal);
@@ -133,10 +134,20 @@ const _setupEventListeners = () => {
                 defaultPromptDisplay.textContent = activePrompt || '(Could not load default prompt from server)';
             }
             defaultPromptDisplay.classList.toggle('hidden', !isHidden);
+            if (copyDefaultPromptBtn) copyDefaultPromptBtn.classList.toggle('hidden', !isHidden);
             toggleDefaultPromptBtn.classList.toggle('expanded', isHidden);
             toggleDefaultPromptBtn.innerHTML = isHidden
                 ? `<i class="fas fa-chevron-right"></i> Hide default prompt (${formatLabel})`
                 : `<i class="fas fa-chevron-right"></i> Show default prompt (${formatLabel})`;
+        });
+    }
+    if (copyDefaultPromptBtn) {
+        copyDefaultPromptBtn.addEventListener('click', () => {
+            const text = defaultPromptDisplay.textContent;
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Default prompt copied!');
+            });
         });
     }
     if (advancedSettingsModal) {

@@ -106,6 +106,7 @@ const customPromptInput = document.getElementById('customPromptInput');
 const toggleDefaultPromptBtn = document.getElementById('toggleDefaultPromptBtn');
 const defaultPromptDisplay = document.getElementById('defaultPromptDisplay');
 const promptInfoIcon = document.getElementById('promptInfoIcon');
+const copyDefaultPromptBtn = document.getElementById('copyDefaultPromptBtn');
 
 let serverMaxThreads = 4;
 let serverDefaultPromptPlain = '';

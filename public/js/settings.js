@@ -21,8 +21,7 @@ const isGeminiCustomSelected = () => ocrEngineSelect && ocrEngineSelect.value ==
 const isOpenRouterSelected = () => ocrEngineSelect && (
     ocrEngineSelect.value === 'mistral-openrouter' ||
     ocrEngineSelect.value === 'gemma-openrouter' ||
-    ocrEngineSelect.value === 'qwen-vl-openrouter' ||
-    ocrEngineSelect.value === 'gemini-flash-openrouter' ||
+    ocrEngineSelect.value === 'gemini3-flash-openrouter' ||
     ocrEngineSelect.value === 'nemotron-openrouter' ||
     ocrEngineSelect.value === 'openrouter-custom'
 );

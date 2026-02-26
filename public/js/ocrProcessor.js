@@ -11,6 +11,7 @@ const prepareFileForProcessing = (file) => {
         file.text = '';
     }
     file.status = 'processing';
+    file.edited = false;
 };
 
 const startBatchProcessing = async () => {
@@ -431,7 +432,11 @@ const formatDuration = (durationMs) => {
 
 const EXPORT_GITHUB_STAR_URL = 'https://github.com/naimurhasan/online-ocr-free.git';
 
+const GITHUB_STAR_DISMISSED_KEY = 'onlineocrfree_github_star_dismissed';
+
 const promptGithubStarAfterExport = async () => {
+    if (localStorage.getItem(GITHUB_STAR_DISMISSED_KEY)) return;
+
     const shouldOpen = await showAppConfirm(
         'Export completed. If onlineocrfree helped you, would you like to star it on GitHub?',
         {
@@ -442,6 +447,7 @@ const promptGithubStarAfterExport = async () => {
     );
 
     if (shouldOpen) {
+        localStorage.setItem(GITHUB_STAR_DISMISSED_KEY, '1');
         window.open(EXPORT_GITHUB_STAR_URL, '_blank', 'noopener,noreferrer');
     }
 };

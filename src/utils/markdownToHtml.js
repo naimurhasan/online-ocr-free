@@ -8,8 +8,8 @@ marked.setOptions({
 
 const AI_ENGINES = [
     'mistral-openrouter', 'gemma-openrouter',
-    'qwen-vl-openrouter', 'gemini-flash-openrouter',
-    'nemotron-openrouter', 'openrouter-custom',
+    'gemini3-flash-openrouter', 'nemotron-openrouter',
+    'openrouter-custom',
     'gemini-flash', 'gemini-custom'
 ];
 

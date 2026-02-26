@@ -486,8 +486,7 @@
                         <option value="gemini-custom">Custom Model (Google AI)</option>
                         <option value="mistral-openrouter">Mistral Small 3.1 24B (OpenRouter)</option>
                         <option value="gemma-openrouter">Gemma 3 27B (OpenRouter)</option>
-                        <option value="qwen-vl-openrouter">Qwen 2.5 VL 32B (OpenRouter)</option>
-                        <option value="gemini-flash-openrouter">Gemini 2.0 Flash (OpenRouter)</option>
+                        <option value="gemini3-flash-openrouter">Gemini 3 Flash Preview (OpenRouter)</option>
                         <option value="nemotron-openrouter">Nemotron Nano 12B VL (OpenRouter)</option>
                         <option value="openrouter-custom">Custom Model (OpenRouter)</option>
                     </select>
@@ -594,6 +593,9 @@
                     <div class="result-actions">
                         <button id="copyBtn" class="btn-icon" title="Copy"><i class="far fa-copy"></i></button>
                     </div>
+                </div>
+                <div id="editedIndicator" class="edited-indicator hidden">
+                    <i class="fas fa-pen"></i> Edited — changes will be included in export
                 </div>
                 <textarea id="outputText" placeholder="OCR result will appear here..." spellcheck="false"></textarea>
 
@@ -878,7 +880,12 @@
                     <button type="button" id="toggleDefaultPromptBtn" class="btn-text-only adv-show-default-btn">
                         <i class="fas fa-chevron-right"></i> Show default prompt
                     </button>
-                    <pre id="defaultPromptDisplay" class="adv-default-prompt hidden"></pre>
+                    <div class="adv-default-prompt-wrap">
+                        <pre id="defaultPromptDisplay" class="adv-default-prompt hidden"></pre>
+                        <button type="button" id="copyDefaultPromptBtn" class="btn-icon adv-copy-prompt-btn hidden" title="Copy default prompt">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 

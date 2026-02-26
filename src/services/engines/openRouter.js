@@ -6,8 +6,7 @@ const REQUEST_TIMEOUT_MS = 120_000;
 const OPENROUTER_MODELS = {
     'mistral-openrouter': 'mistralai/mistral-small-3.1-24b-instruct',
     'gemma-openrouter': 'google/gemma-3-27b-it',
-    'qwen-vl-openrouter': 'qwen/qwen2.5-vl-32b-instruct',
-    'gemini-flash-openrouter': 'google/gemini-2.0-flash-exp',
+    'gemini3-flash-openrouter': 'google/gemini-3-flash-preview',
     'nemotron-openrouter': 'nvidia/nemotron-nano-12b-v2-vl'
 };
 
