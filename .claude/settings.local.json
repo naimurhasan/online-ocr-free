@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm ls:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx jest)"
     ]
   }
 }

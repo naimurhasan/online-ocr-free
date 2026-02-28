@@ -1,5 +1,10 @@
 const path = require('path');
 
+jest.mock('../../src/utils/supabaseClient', () => ({
+    db: { query: jest.fn().mockResolvedValue({ rows: [] }) },
+    storage: { from: jest.fn() },
+    storageUploadWithRetry: jest.fn()
+}));
 jest.mock('../../src/services/ocrService', () => ({
     extractText: jest.fn()
 }));
@@ -97,7 +102,7 @@ describe('ocrController.processFile', () => {
             file: { path: '/tmp/t.png', mimetype: 'image/png', originalname: 't.png', filename: 't.png' },
             body: {
                 lang: 'ben',
-                engine: 'gemma-openrouter-free',
+                engine: 'gemma-openrouter',
                 googleApiKey: 'gk',
                 openRouterApiKey: 'ork',
                 openRouterOutputFormat: 'markdown',
@@ -111,7 +116,7 @@ describe('ocrController.processFile', () => {
         await ocrController.processFile(req, res);
 
         expect(extractText).toHaveBeenCalledWith('/tmp/t.png', 'image/png', 'ben', true, {
-            engine: 'gemma-openrouter-free',
+            engine: 'gemma-openrouter',
             googleApiKey: 'gk',
             geminiApiKey: '',
             geminiCustomModel: '',
@@ -241,7 +246,7 @@ describe('ocrController.formatForPdf', () => {
         const req = {
             body: {
                 files: [{ filename: 'doc.pdf', text: '# Title\n\nSome paragraph' }],
-                engine: 'gemma-openrouter-free',
+                engine: 'gemma-openrouter',
                 outputFormat: 'markdown',
                 lang: 'eng'
             }

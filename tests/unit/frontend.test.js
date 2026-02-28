@@ -48,7 +48,15 @@ beforeAll(() => {
         'cancelAdvSettingsBtn', 'saveAdvSettingsBtn', 'resetAllSettingsBtn',
         'concurrentThreadsSlider', 'concurrentThreadsValue',
         'preprocessingToggle', 'customPromptInput',
-        'toggleDefaultPromptBtn', 'defaultPromptDisplay', 'promptInfoIcon'
+        'toggleDefaultPromptBtn', 'defaultPromptDisplay', 'promptInfoIcon',
+        'copyDefaultPromptBtn', 'useTranslationPromptBtn',
+        'geminiKeyWrap', 'geminiApiKey', 'geminiCustomModelWrap', 'geminiCustomModel',
+        'exportPdfBtn', 'emailFormatZip', 'emailFormatPdf',
+        'getTrialKeyBtn', 'trialModal', 'trialEmailInput', 'trialSendOtpBtn',
+        'trialResendOtpBtn', 'trialStep1', 'trialStep2', 'trialStep3',
+        'trialOtpSentEmail', 'trialOtpInput', 'trialClaimBtn',
+        'trialCreditsMsg', 'trialError', 'cancelTrialBtn',
+        'reviewCustomPromptRow'
     ];
 
     elementIds.forEach(id => {
@@ -273,7 +281,7 @@ describe('settings.js - engine selection helpers', () => {
     });
 
     test('isOpenRouterSelected returns true for all OpenRouter engines', () => {
-        ['gemma-openrouter-free', 'gemma-openrouter-paid', 'mistral-openrouter-free', 'mistral-openrouter-paid', 'openrouter-custom'].forEach(engine => {
+        ['mistral-openrouter', 'gemma-openrouter', 'gemini3-flash-openrouter', 'nemotron-openrouter', 'openrouter-custom'].forEach(engine => {
             document.getElementById('ocrEngine').value = engine;
             expect(G.ctx.isOpenRouterSelected()).toBe(true);
         });
@@ -288,7 +296,7 @@ describe('settings.js - engine selection helpers', () => {
         document.getElementById('ocrEngine').value = 'openrouter-custom';
         expect(G.ctx.isOpenRouterCustomSelected()).toBe(true);
 
-        document.getElementById('ocrEngine').value = 'gemma-openrouter-free';
+        document.getElementById('ocrEngine').value = 'gemma-openrouter';
         expect(G.ctx.isOpenRouterCustomSelected()).toBe(false);
     });
 });
@@ -357,7 +365,7 @@ describe('settings.js - updateEngineUI', () => {
     });
 
     test('shows openrouter fields when openrouter engine selected', () => {
-        document.getElementById('ocrEngine').value = 'gemma-openrouter-free';
+        document.getElementById('ocrEngine').value = 'gemma-openrouter';
         G.ctx.updateEngineUI();
         expect(document.getElementById('googleVisionKeyWrap').classList.contains('hidden')).toBe(true);
         expect(document.getElementById('openRouterKeyWrap').classList.contains('hidden')).toBe(false);

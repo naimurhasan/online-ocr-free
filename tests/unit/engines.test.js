@@ -5,8 +5,7 @@ describe('openRouter engine helpers', () => {
         test('returns true for known OpenRouter engines', () => {
             expect(isOpenRouterEngine('mistral-openrouter')).toBe(true);
             expect(isOpenRouterEngine('gemma-openrouter')).toBe(true);
-            expect(isOpenRouterEngine('qwen-vl-openrouter')).toBe(true);
-            expect(isOpenRouterEngine('gemini-flash-openrouter')).toBe(true);
+            expect(isOpenRouterEngine('gemini3-flash-openrouter')).toBe(true);
             expect(isOpenRouterEngine('nemotron-openrouter')).toBe(true);
         });
 
@@ -26,13 +25,12 @@ describe('openRouter engine helpers', () => {
         test('contains expected model mappings', () => {
             expect(OPENROUTER_MODELS['mistral-openrouter']).toBe('mistralai/mistral-small-3.1-24b-instruct');
             expect(OPENROUTER_MODELS['gemma-openrouter']).toBe('google/gemma-3-27b-it');
-            expect(OPENROUTER_MODELS['qwen-vl-openrouter']).toBe('qwen/qwen2.5-vl-32b-instruct');
-            expect(OPENROUTER_MODELS['gemini-flash-openrouter']).toBe('google/gemini-2.0-flash-exp');
+            expect(OPENROUTER_MODELS['gemini3-flash-openrouter']).toBe('google/gemini-3-flash-preview');
             expect(OPENROUTER_MODELS['nemotron-openrouter']).toBe('nvidia/nemotron-nano-12b-v2-vl');
         });
 
-        test('has exactly 5 models', () => {
-            expect(Object.keys(OPENROUTER_MODELS)).toHaveLength(5);
+        test('has exactly 4 models', () => {
+            expect(Object.keys(OPENROUTER_MODELS)).toHaveLength(4);
         });
     });
 });
@@ -120,7 +118,7 @@ describe('openRouter extractText', () => {
         delete process.env.OPENROUTER_API_KEY;
 
         const { extractText } = require('../../src/services/engines/openRouter');
-        await expect(extractText('/tmp/img.png', 'image/png', 'ben', '', 'plain', 'gemma-openrouter-free'))
+        await expect(extractText('/tmp/img.png', 'image/png', 'ben', '', 'plain', 'gemma-openrouter'))
             .rejects.toThrow('OpenRouter API key is required');
 
         process.env.OPENROUTER_API_KEY = originalEnv;
@@ -142,7 +140,7 @@ describe('openRouter extractText', () => {
         }));
 
         const { extractText } = require('../../src/services/engines/openRouter');
-        await extractText('/tmp/img.png', 'image/png', 'ben', 'Bearer sk-test-key', 'plain', 'gemma-openrouter-free');
+        await extractText('/tmp/img.png', 'image/png', 'ben', 'Bearer sk-test-key', 'plain', 'gemma-openrouter');
 
         const callArgs = mockFetch.mock.calls[0][1];
         expect(callArgs.headers['Authorization']).toBe('Bearer sk-test-key');
@@ -165,7 +163,7 @@ describe('openRouter extractText', () => {
 
         const { extractText } = require('../../src/services/engines/openRouter');
         const longPrompt = 'x'.repeat(3000);
-        await extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter-free', '', longPrompt);
+        await extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter', '', longPrompt);
 
         const body = JSON.parse(mockFetch.mock.calls[0][1].body);
         const sentPrompt = body.messages[0].content[0].text;
@@ -188,7 +186,7 @@ describe('openRouter extractText', () => {
         }));
 
         const { extractText } = require('../../src/services/engines/openRouter');
-        const result = await extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter-free');
+        const result = await extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter');
 
         expect(result).toBe('part1\npart2');
     });
@@ -208,7 +206,7 @@ describe('openRouter extractText', () => {
         }));
 
         const { extractText } = require('../../src/services/engines/openRouter');
-        await expect(extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter-free'))
+        await expect(extractText('/tmp/img.png', 'image/png', 'ben', 'sk-key', 'plain', 'gemma-openrouter'))
             .rejects.toThrow('Unauthorized');
     });
 });
