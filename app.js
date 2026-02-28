@@ -6,8 +6,14 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+const fs = require('fs');
+
 const app = express();
+app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
+
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
