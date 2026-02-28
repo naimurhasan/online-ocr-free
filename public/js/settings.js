@@ -143,6 +143,51 @@ const saveAdvancedSettings = () => {
     showToast('Settings saved');
 };
 
+const TRANSLATION_PROMPT_TEMPLATE = `You are an advanced OCR engine. Extract all readable text from this image.
+After completing the extraction and layout reconstruction, **translate the entire content into {{LANG}}**, strictly preserving the exact same visual and structural format.
+
+Return valid Markdown and HTML that strictly preserves the visual and structural layout of the document.
+
+---
+
+### Rules for Structure Preservation:
+
+* **Layout Detection (CRITICAL):**
+
+  * If the image has a **multi-column layout**, you MUST use an HTML \`<table>\` with \`style="border: none; border-collapse: collapse; width: 100%;"\` to represent text side-by-side.
+  * Ensure all \`<td>\` and \`<tr>\` tags include \`style="border: none; vertical-align: top;"\` to ensure no borders are rendered and text aligns to the top.
+  * If the image is a **single-column layout**, use standard paragraphs and headings.
+
+* **Hierarchy:** Use appropriate Markdown headers (#, ##, ###) or bold text to match visual importance.
+
+* **Mathematical Expressions:** You **must** use $...$ for inline math and $$...$$ for block math.
+
+* **Formatting:** Use **bold** for visually bold text and *italics* for italicized text.
+
+* **Lists:** Use Markdown syntax for bullets or numbered lists.
+
+* **Accuracy:** First transcribe text exactly as written. Then translate all textual content into {{LANG}} while keeping the same structure, formatting, table layout, line breaks, emphasis, and mathematical notation.
+
+---
+
+### Output Constraints:
+
+* Do not add commentary or summaries.
+* Do not include the original language in the final output.
+* Return only the {{LANG}}-translated Markdown/HTML content.
+* Use HTML tables for multi-column layouts to ensure a borderless appearance.`;
+
+const handleUseTranslationPrompt = () => {
+    const lang = prompt('Enter the target language for translation (e.g. Bangla, Hindi, Spanish):');
+    if (!lang || !lang.trim()) return;
+    const filled = TRANSLATION_PROMPT_TEMPLATE.replace(/\{\{LANG\}\}/g, lang.trim());
+    if (customPromptInput) {
+        customPromptInput.value = filled;
+        customPromptInput.focus();
+    }
+    showToast('Translation prompt set. Make sure to use an AI engine (Gemini or OpenRouter) — Tesseract and Google Vision ignore custom prompts.', 5000);
+};
+
 const resetAllSettings = async () => {
     const confirmed = await showAppConfirm(
         'This will reset all settings (language, engine, API keys, advanced settings) to their defaults. Continue?',

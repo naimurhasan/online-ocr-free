@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const { db, storage } = require('../utils/supabaseClient');
+const { db, storage, storageUploadWithRetry } = require('../utils/supabaseClient');
 const { sendOTP } = require('../utils/emailService');
 
 const OTP_EXPIRY_MINUTES = 5;
@@ -140,9 +140,8 @@ exports.createJob = async (req, res) => {
             const safeName = file.originalname.replace(/[^a-zA-Z0-9_\-.\u0980-\u09FF]/g, '_').slice(0, 200);
             const storagePath = `${jobId}/${uuidv4()}_${safeName}`;
 
-            const { error: uploadErr } = await storage
-                .from('ocr-uploads')
-                .upload(storagePath, fileBuffer, { contentType: file.mimetype });
+            const { error: uploadErr } = await storageUploadWithRetry(
+                'ocr-uploads', storagePath, fileBuffer, { contentType: file.mimetype });
 
             if (uploadErr) {
                 console.error(`Upload failed for ${file.originalname}:`, uploadErr);

@@ -107,6 +107,7 @@ const toggleDefaultPromptBtn = document.getElementById('toggleDefaultPromptBtn')
 const defaultPromptDisplay = document.getElementById('defaultPromptDisplay');
 const promptInfoIcon = document.getElementById('promptInfoIcon');
 const copyDefaultPromptBtn = document.getElementById('copyDefaultPromptBtn');
+const useTranslationPromptBtn = document.getElementById('useTranslationPromptBtn');
 
 let serverMaxThreads = 4;
 let serverDefaultPromptPlain = '';

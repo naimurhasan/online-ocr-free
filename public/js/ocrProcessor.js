@@ -576,17 +576,19 @@ const downloadPdf = async () => {
 
         showToast('Use "Save as PDF" in the print dialog to download your PDF.', 5000);
 
+        let printed = false;
         const triggerPrint = () => {
+            if (printed) return;
+            printed = true;
             setTimeout(() => {
                 printWin.focus();
                 printWin.print();
             }, 300);
         };
 
+        printWin.onload = triggerPrint;
         if (printWin.document.readyState === 'complete') {
             triggerPrint();
-        } else {
-            printWin.onload = triggerPrint;
         }
 
         await promptGithubStarAfterExport();

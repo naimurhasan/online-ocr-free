@@ -119,6 +119,9 @@ const _setupEventListeners = () => {
     if (resetAllSettingsBtn) {
         resetAllSettingsBtn.addEventListener('click', resetAllSettings);
     }
+    if (useTranslationPromptBtn) {
+        useTranslationPromptBtn.addEventListener('click', handleUseTranslationPrompt);
+    }
     if (concurrentThreadsSlider) {
         concurrentThreadsSlider.addEventListener('input', () => {
             concurrentThreadsValue.textContent = concurrentThreadsSlider.value;

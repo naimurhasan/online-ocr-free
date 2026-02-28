@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { db, storage } = require('../utils/supabaseClient');
+const { db, storage, storageUploadWithRetry } = require('../utils/supabaseClient');
 const { extractText } = require('./ocrService');
 const { sendResults } = require('../utils/emailService');
 
@@ -92,9 +92,8 @@ const processNextJob = async (buildZip, buildPdf) => {
             formatLabel = 'zip';
         }
 
-        const { error: uploadErr } = await storage
-            .from('ocr-results')
-            .upload(resultPath, resultBuffer, { contentType });
+        const { error: uploadErr } = await storageUploadWithRetry(
+            'ocr-results', resultPath, resultBuffer, { contentType });
 
         if (uploadErr) throw new Error(`Failed to upload results: ${uploadErr.message}`);
 

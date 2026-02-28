@@ -1619,10 +1619,27 @@ select,
     color: var(--accent-color);
 }
 
+/* Translation Prompt Button */
+.adv-translation-prompt-btn {
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    padding: 0.35rem 0;
+    color: var(--primary-color);
+    cursor: pointer;
+}
+
+.adv-translation-prompt-btn:hover {
+    color: var(--primary-hover);
+    background: transparent;
+}
+
 /* Show Default Prompt Button */
 .adv-show-default-btn {
     width: auto;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.4rem;
     font-size: 0.78rem;
