@@ -1,7 +1,7 @@
 // ── onboarding.js ── First-time user onboarding wizard + tutorial modal
 
 const ONBOARDING_DONE_KEY = 'onlineocrfree_onboarding_done_v1';
-const TUTORIAL_VIDEO_URL = 'https://www.youtube.com/embed/Upbo17KtXIE?si=T2ZeZfkqvfKtQfZ-';
+const TUTORIAL_VIDEO_URL = 'https://www.youtube.com/embed/--wvol93Izg';
 
 // ── DOM References ──
 const onboardingOverlay = document.getElementById('onboardingOverlay');
