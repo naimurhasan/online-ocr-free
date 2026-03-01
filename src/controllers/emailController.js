@@ -22,7 +22,7 @@ exports.sendOtp = async (req, res) => {
         );
 
         if (parseInt(rows[0].cnt) >= OTP_RATE_LIMIT) {
-            return res.status(429).json({ error: 'Too many requests. Try again later.' });
+            return res.status(429).json({ error: 'Free email quota reached. Please try again after some time.' });
         }
 
         const isDev = process.env.OCR_DEV_OTP === 'true';

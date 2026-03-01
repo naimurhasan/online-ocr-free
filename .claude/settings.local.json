@@ -4,7 +4,8 @@
       "Bash(npm ls:*)",
       "Bash(npm install:*)",
       "Bash(npx jest)",
-      "Bash(npx jest --no-coverage)"
+      "Bash(npx jest --no-coverage)",
+      "Bash(npm uninstall uuid)"
     ]
   }
 }

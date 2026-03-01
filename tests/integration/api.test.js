@@ -245,7 +245,7 @@ describe('POST /api/otp/send', () => {
             .send({ email: 'test@example.com' });
 
         expect(res.status).toBe(429);
-        expect(res.body.error).toMatch(/Too many requests/);
+        expect(res.body.error).toMatch(/Free email quota reached/);
     });
 
     test('sends OTP successfully', async () => {
