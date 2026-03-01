@@ -82,6 +82,9 @@ const extractText = async (filePath, mimetype, lang = 'ben', saveSteps = true, o
 
     console.log('\n✨ Text extraction complete!');
 
+    // Clean up temp preprocessing files
+    clearTempFolder().catch(() => {});
+
     console.log('🧹 Running Rule-Based Cleaner...');
     const cleanedText = cleanText(textResult);
 

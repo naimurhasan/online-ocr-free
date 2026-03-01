@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm ls:*)",
       "Bash(npm install:*)",
-      "Bash(npx jest)"
+      "Bash(npx jest)",
+      "Bash(npx jest --no-coverage)"
     ]
   }
 }

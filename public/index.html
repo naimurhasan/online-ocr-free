@@ -1005,18 +1005,13 @@ Return valid Markdown and HTML that strictly preserves the visual and structural
     <script src="js/trialFlow.js"></script>
     <script src="js/onboarding.js"></script>
     <script src="js/main.js"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-87ZF63GTHW"></script>
     <script>
-        // Defer Google Analytics to avoid blocking page load
-        window.addEventListener('load', function () {
-            var s = document.createElement('script');
-            s.src = 'https://www.googletagmanager.com/gtag/js?id=G-87ZF63GTHW';
-            s.async = true;
-            document.head.appendChild(s);
-            window.dataLayer = window.dataLayer || [];
-            function gtag() { dataLayer.push(arguments); }
-            gtag('js', new Date());
-            gtag('config', 'G-87ZF63GTHW');
-        });
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-87ZF63GTHW');
     </script>
 </body>
 

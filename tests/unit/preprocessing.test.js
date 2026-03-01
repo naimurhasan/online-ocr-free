@@ -6,13 +6,14 @@ jest.mock('sharp', () => {
         resize: jest.fn().mockReturnThis(),
         normalize: jest.fn().mockReturnThis(),
         sharpen: jest.fn().mockReturnThis(),
-        blur: jest.fn().mockReturnThis(),
         threshold: jest.fn().mockReturnThis(),
         median: jest.fn().mockReturnThis(),
         linear: jest.fn().mockReturnThis(),
         toFile: jest.fn().mockResolvedValue({})
     };
-    return jest.fn(() => mockSharp);
+    const sharpFn = jest.fn(() => mockSharp);
+    sharpFn.cache = jest.fn();
+    return sharpFn;
 });
 
 jest.mock('fs', () => ({
@@ -40,15 +41,14 @@ describe('preprocessing', () => {
             expect(result).toMatch(/page1_.*_final_processed\.png$/);
         });
 
-        test('applies grayscale, resize, normalize, sharpen, blur, and threshold', async () => {
+        test('applies grayscale, resize, normalize, sharpen, and threshold', async () => {
             await preprocessImageWithSteps('/tmp/test.png');
 
             const mockInstance = sharp();
             expect(mockInstance.grayscale).toHaveBeenCalled();
-            expect(mockInstance.resize).toHaveBeenCalledWith(expect.objectContaining({ width: 3000 }));
+            expect(mockInstance.resize).toHaveBeenCalledWith(expect.objectContaining({ width: 2000, withoutEnlargement: true }));
             expect(mockInstance.normalize).toHaveBeenCalled();
             expect(mockInstance.sharpen).toHaveBeenCalled();
-            expect(mockInstance.blur).toHaveBeenCalledWith(0.5);
             expect(mockInstance.threshold).toHaveBeenCalledWith(160);
         });
     });
@@ -68,6 +68,7 @@ describe('preprocessing', () => {
             expect(mockInstance.grayscale).toHaveBeenCalled();
             expect(mockInstance.median).toHaveBeenCalledWith(3);
             expect(mockInstance.linear).toHaveBeenCalledWith(1.5, -(128 * 1.5) + 128);
+            expect(mockInstance.resize).toHaveBeenCalledWith(expect.objectContaining({ width: 2000, withoutEnlargement: true }));
             expect(mockInstance.sharpen).toHaveBeenCalledWith({ sigma: 1.5 });
             expect(mockInstance.threshold).toHaveBeenCalledWith(140);
         });

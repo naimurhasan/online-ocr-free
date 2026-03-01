@@ -3,6 +3,9 @@ const crypto = require('crypto');
 const sharp = require('sharp');
 const fs = require('fs').promises;
 
+// Reduce memory footprint on constrained servers
+sharp.cache(false);
+
 const uniqueId = () => `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
 const ensureTempFolder = async () => {
@@ -19,27 +22,22 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
     const tempDir = await ensureTempFolder();
     const uid = uniqueId();
 
-    const step0Path = path.join(tempDir, `${stepPrefix}_${uid}_0_original.png`);
-    await sharp(imagePath).toFile(step0Path);
-    console.log('✅ Step 0: Original saved to', step0Path);
-
     const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
 
-    // Grayscale -> Resize -> Normalize -> Sharpen -> Blur (dilation sim) -> Threshold
-    await sharp(step0Path)
+    // Grayscale -> Resize -> Normalize -> Sharpen -> Threshold
+    await sharp(imagePath)
         .grayscale()
         .resize({
-            width: 3000,
+            width: 2000,
             fit: 'inside',
-            withoutEnlargement: false
+            withoutEnlargement: true
         })
         .normalize()
         .sharpen()
-        .blur(0.5)
         .threshold(160)
         .toFile(finalPath);
 
-    console.log('✅ Optimized Processing Complete:', finalPath);
+    console.log('✅ Processing Complete:', finalPath);
 
     return finalPath;
 };
@@ -48,22 +46,17 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
     const tempDir = await ensureTempFolder();
     const uid = uniqueId();
 
-    const step0Path = path.join(tempDir, `${stepPrefix}_${uid}_0_original.png`);
-    await sharp(imagePath).toFile(step0Path);
-
-    console.log('🔍 Running Optimized Advanced Preprocessing...');
-
     const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
 
     // Grayscale -> Median -> Contrast -> Resize -> Sharpen -> Threshold
-    await sharp(step0Path)
+    await sharp(imagePath)
         .grayscale()
         .median(3)
         .linear(1.5, -(128 * 1.5) + 128)
         .resize({
-            width: 3000,
+            width: 2000,
             fit: 'inside',
-            withoutEnlargement: false
+            withoutEnlargement: true
         })
         .sharpen({ sigma: 1.5 })
         .threshold(140)

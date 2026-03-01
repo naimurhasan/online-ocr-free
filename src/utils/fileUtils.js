@@ -22,7 +22,7 @@ const convertPdfToImages = async (pdfPath) => {
     try {
         console.log(`📄 Converting PDF using system pdftoppm: ${pdfPath}`);
 
-        await execFilePromise('pdftoppm', ['-png', '-r', '300', pdfPath, outputPrefix]);
+        await execFilePromise('pdftoppm', ['-png', '-r', '250', pdfPath, outputPrefix]);
 
         const files = fs.readdirSync(outputDir)
             .filter(file => file.startsWith(baseName + '-') && file.endsWith('.png'))
