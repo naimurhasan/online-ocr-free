@@ -7,6 +7,28 @@ const TESSERACT_OPTS = {
     gzip: false
 };
 
+// Persistent worker — reused across requests to avoid 2-4s init overhead
+let cachedWorker = null;
+let cachedLang = null;
+
+const getWorker = async (lang) => {
+    if (cachedWorker && cachedLang === lang) return cachedWorker;
+
+    if (cachedWorker && cachedLang !== lang) {
+        await cachedWorker.reinitialize(lang);
+        cachedLang = lang;
+        return cachedWorker;
+    }
+
+    cachedWorker = await Tesseract.createWorker(lang, undefined, TESSERACT_OPTS);
+    await cachedWorker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        preserve_interword_spaces: '1'
+    });
+    cachedLang = lang;
+    return cachedWorker;
+};
+
 const validateLanguages = async (lang = 'ben') => {
     const requested = [...new Set(
         lang
@@ -31,16 +53,17 @@ const validateLanguages = async (lang = 'ben') => {
 };
 
 const recognize = async (imagePath, lang) => {
-    const result = await Tesseract.recognize(
-        imagePath,
-        lang,
-        {
-            ...TESSERACT_OPTS,
-            tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-            preserve_interword_spaces: '1'
-        }
-    );
+    const worker = await getWorker(lang);
+    const result = await worker.recognize(imagePath);
     return result.data.text;
 };
 
-module.exports = { validateLanguages, recognize };
+const terminateWorker = async () => {
+    if (cachedWorker) {
+        await cachedWorker.terminate();
+        cachedWorker = null;
+        cachedLang = null;
+    }
+};
+
+module.exports = { validateLanguages, recognize, terminateWorker };

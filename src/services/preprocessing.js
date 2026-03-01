@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 
 // Reduce memory footprint on constrained servers
 sharp.cache(false);
+sharp.concurrency(1);
 
 const uniqueId = () => `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
@@ -22,9 +23,9 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
     const tempDir = await ensureTempFolder();
     const uid = uniqueId();
 
-    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
+    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.jpg`);
 
-    // Grayscale -> Resize -> Normalize -> Sharpen -> Threshold
+    // Grayscale -> Resize -> Normalize -> Sharpen -> Threshold -> JPEG
     await sharp(imagePath)
         .grayscale()
         .resize({
@@ -35,6 +36,7 @@ const preprocessImageWithSteps = async (imagePath, stepPrefix = 'image') => {
         .normalize()
         .sharpen()
         .threshold(160)
+        .jpeg({ quality: 90 })
         .toFile(finalPath);
 
     console.log('✅ Processing Complete:', finalPath);
@@ -46,9 +48,9 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
     const tempDir = await ensureTempFolder();
     const uid = uniqueId();
 
-    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.png`);
+    const finalPath = path.join(tempDir, `${stepPrefix}_${uid}_final_processed.jpg`);
 
-    // Grayscale -> Median -> Contrast -> Resize -> Sharpen -> Threshold
+    // Grayscale -> Median -> Contrast -> Resize -> Sharpen -> Threshold -> JPEG
     await sharp(imagePath)
         .grayscale()
         .median(3)
@@ -60,6 +62,7 @@ const advancedPreprocessWithSteps = async (imagePath, stepPrefix = 'advanced') =
         })
         .sharpen({ sigma: 1.5 })
         .threshold(140)
+        .jpeg({ quality: 90 })
         .toFile(finalPath);
 
     console.log('✅ Advanced Processing Complete:', finalPath);

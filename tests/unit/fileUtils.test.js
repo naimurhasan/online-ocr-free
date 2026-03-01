@@ -50,18 +50,18 @@ describe('convertPdfToImages', () => {
         const execFilePromise = require('util').promisify(execFile);
 
         fs.readdirSync.mockReturnValue([
-            'test-2.png',
-            'test-1.png',
-            'test-3.png'
+            'test-2.jpg',
+            'test-1.jpg',
+            'test-3.jpg'
         ]);
 
         const result = await convertPdfToImages('/tmp/uploads/test.pdf');
 
         expect(execFile).toHaveBeenCalled();
         expect(result).toHaveLength(3);
-        expect(result[0]).toContain('test-1.png');
-        expect(result[1]).toContain('test-2.png');
-        expect(result[2]).toContain('test-3.png');
+        expect(result[0]).toContain('test-1.jpg');
+        expect(result[1]).toContain('test-2.jpg');
+        expect(result[2]).toContain('test-3.jpg');
     });
 
     test('throws on pdftoppm not found (ENOENT)', async () => {

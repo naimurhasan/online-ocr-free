@@ -22,14 +22,14 @@ const convertPdfToImages = async (pdfPath) => {
     try {
         console.log(`📄 Converting PDF using system pdftoppm: ${pdfPath}`);
 
-        await execFilePromise('pdftoppm', ['-png', '-r', '250', pdfPath, outputPrefix]);
+        await execFilePromise('pdftoppm', ['-jpeg', '-r', '250', pdfPath, outputPrefix]);
 
         const files = fs.readdirSync(outputDir)
-            .filter(file => file.startsWith(baseName + '-') && file.endsWith('.png'))
+            .filter(file => file.startsWith(baseName + '-') && file.endsWith('.jpg'))
             .map(file => path.join(outputDir, file))
             .sort((a, b) => {
-                const numA = parseInt(a.match(/-(\d+)\.png$/)[1]);
-                const numB = parseInt(b.match(/-(\d+)\.png$/)[1]);
+                const numA = parseInt(a.match(/-(\d+)\.jpg$/)[1]);
+                const numB = parseInt(b.match(/-(\d+)\.jpg$/)[1]);
                 return numA - numB;
             });
 

@@ -39,7 +39,7 @@ describe('tesseract engine', () => {
     beforeEach(() => jest.resetModules());
 
     test('validateLanguages throws for missing traineddata', async () => {
-        jest.doMock('tesseract.js', () => ({ recognize: jest.fn(), PSM: { AUTO: 3 } }));
+        jest.doMock('tesseract.js', () => ({ createWorker: jest.fn(), PSM: { AUTO: 3 } }));
         jest.doMock('fs', () => ({
             promises: {
                 access: jest.fn().mockRejectedValue(new Error('ENOENT'))
@@ -51,7 +51,7 @@ describe('tesseract engine', () => {
     });
 
     test('validateLanguages handles multi-language codes', async () => {
-        jest.doMock('tesseract.js', () => ({ recognize: jest.fn(), PSM: { AUTO: 3 } }));
+        jest.doMock('tesseract.js', () => ({ createWorker: jest.fn(), PSM: { AUTO: 3 } }));
         jest.doMock('fs', () => ({
             promises: {
                 access: jest.fn().mockRejectedValue(new Error('ENOENT'))
@@ -64,7 +64,7 @@ describe('tesseract engine', () => {
 
     test('validateLanguages deduplicates language codes', async () => {
         let accessCount = 0;
-        jest.doMock('tesseract.js', () => ({ recognize: jest.fn(), PSM: { AUTO: 3 } }));
+        jest.doMock('tesseract.js', () => ({ createWorker: jest.fn(), PSM: { AUTO: 3 } }));
         jest.doMock('fs', () => ({
             promises: {
                 access: jest.fn().mockImplementation(() => {
@@ -79,10 +79,15 @@ describe('tesseract engine', () => {
         expect(accessCount).toBe(1);
     });
 
-    test('recognize calls Tesseract.recognize and returns text', async () => {
-        const mockRecognize = jest.fn().mockResolvedValue({ data: { text: 'hello world' } });
+    test('recognize uses persistent worker and returns text', async () => {
+        const mockWorker = {
+            recognize: jest.fn().mockResolvedValue({ data: { text: 'hello world' } }),
+            setParameters: jest.fn().mockResolvedValue({}),
+            reinitialize: jest.fn().mockResolvedValue({}),
+            terminate: jest.fn().mockResolvedValue({})
+        };
         jest.doMock('tesseract.js', () => ({
-            recognize: mockRecognize,
+            createWorker: jest.fn().mockResolvedValue(mockWorker),
             PSM: { AUTO: 3 }
         }));
         jest.doMock('fs', () => ({
@@ -92,10 +97,7 @@ describe('tesseract engine', () => {
         const { recognize } = require('../../src/services/engines/tesseract');
         const result = await recognize('/tmp/test.png', 'eng');
 
-        expect(mockRecognize).toHaveBeenCalledWith('/tmp/test.png', 'eng', expect.objectContaining({
-            tessedit_pageseg_mode: 3,
-            preserve_interword_spaces: '1'
-        }));
+        expect(mockWorker.recognize).toHaveBeenCalledWith('/tmp/test.png');
         expect(result).toBe('hello world');
     });
 });

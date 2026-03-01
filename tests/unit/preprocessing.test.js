@@ -9,10 +9,12 @@ jest.mock('sharp', () => {
         threshold: jest.fn().mockReturnThis(),
         median: jest.fn().mockReturnThis(),
         linear: jest.fn().mockReturnThis(),
+        jpeg: jest.fn().mockReturnThis(),
         toFile: jest.fn().mockResolvedValue({})
     };
     const sharpFn = jest.fn(() => mockSharp);
     sharpFn.cache = jest.fn();
+    sharpFn.concurrency = jest.fn();
     return sharpFn;
 });
 
@@ -38,7 +40,7 @@ describe('preprocessing', () => {
             const result = await preprocessImageWithSteps('/tmp/test.png', 'page1');
 
             expect(sharp).toHaveBeenCalledWith('/tmp/test.png');
-            expect(result).toMatch(/page1_.*_final_processed\.png$/);
+            expect(result).toMatch(/page1_.*_final_processed\.jpg$/);
         });
 
         test('applies grayscale, resize, normalize, sharpen, and threshold', async () => {
@@ -58,7 +60,7 @@ describe('preprocessing', () => {
             const result = await advancedPreprocessWithSteps('/tmp/test.png', 'adv');
 
             expect(sharp).toHaveBeenCalledWith('/tmp/test.png');
-            expect(result).toMatch(/adv_.*_final_processed\.png$/);
+            expect(result).toMatch(/adv_.*_final_processed\.jpg$/);
         });
 
         test('applies grayscale, median, linear, resize, sharpen, and threshold', async () => {
