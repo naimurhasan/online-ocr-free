@@ -44,10 +44,25 @@ const processNextJob = async (buildZip, buildPdf) => {
                 const buffer = Buffer.from(await fileData.arrayBuffer());
                 fs.writeFileSync(tmpFile, buffer);
 
-                const text = await extractText(tmpFile, jf.mimetype, job.lang, false, {
-                    engine: job.engine,
-                    ...job.options,
-                });
+                // Resolve trial keys before passing to OCR engine
+                const opts = { engine: job.engine, ...job.options };
+                if (job.engine === 'google-vision' && opts.googleApiKey) {
+                    const prefix = process.env.TRIAL_KEY_PREFIX || 'ocrmtrial_';
+                    if (opts.googleApiKey.startsWith(prefix)) {
+                        const { rows } = await db.query(
+                            'SELECT id, credits_used, credits_total FROM trial_keys WHERE trial_key = $1',
+                            [opts.googleApiKey]
+                        );
+                        if (rows.length === 0) throw new Error('Invalid trial key.');
+                        const trial = rows[0];
+                        if (trial.credits_used >= trial.credits_total)
+                            throw new Error('Trial key exhausted. Please use your own Google Vision API key.');
+                        await db.query('UPDATE trial_keys SET credits_used = credits_used + 1 WHERE id = $1', [trial.id]);
+                        opts.googleApiKey = process.env.GOOGLE_VISION_API_KEY;
+                    }
+                }
+
+                const text = await extractText(tmpFile, jf.mimetype, job.lang, false, opts);
 
                 await db.query(
                     "UPDATE ocr_job_files SET status = 'done', result_text = $1 WHERE id = $2",

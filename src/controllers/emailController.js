@@ -119,7 +119,7 @@ exports.createJob = async (req, res) => {
             googleApiKey: (req.body.googleApiKey || '').trim(),
             geminiApiKey: (req.body.geminiApiKey || '').trim(),
             geminiCustomModel: (req.body.geminiCustomModel || '').trim(),
-            openRouterApiKey: (req.body.openRouterApiKey || '').trim(),
+            openRouterApiKey: (req.body.openRouterApiKey || process.env.OPENROUTER_API_KEY || '').trim(),
             openRouterOutputFormat: (req.body.openRouterOutputFormat || 'plain').trim(),
             openRouterCustomModel: (req.body.openRouterCustomModel || '').trim(),
             customPrompt: (req.body.customPrompt || '').trim(),
