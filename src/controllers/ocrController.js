@@ -77,7 +77,7 @@ exports.processFile = async (req, res) => {
     } catch (error) {
         console.error('Processing Error:', error);
         if (req.file) deleteFile(req.file.path);
-        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'OpenRouter request failed', 'Missing Tesseract language data', 'Invalid trial key', 'Trial key exhausted', 'Out of capacity', 'Request timed out'];
+        const safeMessages = ['Google Vision API key is required', 'OpenRouter API key is required', 'Gemini API key is required', 'Custom Gemini model ID is required', 'Gemini request failed', 'OpenRouter request failed', 'Missing Tesseract language data', 'Invalid trial key', 'Trial key exhausted', 'Out of capacity', 'Request timed out', 'API key not valid', 'API key expired', 'API_KEY_INVALID', 'Google Vision request failed', 'Forbidden'];
         const isSafe = safeMessages.some(msg => error.message?.startsWith(msg));
         res.status(500).json({ error: isSafe ? error.message : 'Failed to process file' });
     }

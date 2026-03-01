@@ -354,6 +354,9 @@ const openReviewModal = () => {
     const promptRow = document.getElementById('reviewCustomPromptRow');
     if (promptRow) promptRow.classList.toggle('hidden', !advancedSettings.customPrompt);
 
+    const tesseractNote = document.getElementById('tesseractNote');
+    if (tesseractNote) tesseractNote.classList.toggle('hidden', ocrEngineSelect.value !== 'tesseract');
+
     reviewModal.classList.remove('hidden');
 };
 
