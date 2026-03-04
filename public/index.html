@@ -603,9 +603,13 @@ Return valid Markdown and HTML that strictly preserves the visual and structural
                     <i class="fas fa-tv"></i>
                 </button>
 
-                <a href="mailto:asdevelopersbd@gmail.com" class="theme-toggle-btn" title="Contact Us" style="text-decoration: none;">
+                <a href="mailto:asdevelopersbd@gmail.com" class="theme-toggle-btn" title="Contact Us" style="text-decoration: none; color: inherit;">
                     <i class="fas fa-envelope"></i>
                 </a>
+
+                <button id="emailHelpBtn" class="theme-toggle-btn" title="Need Help?">
+                    <i class="fas fa-question-circle"></i>
+                </button>
 
                 <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
                     <i class="fas fa-moon"></i>
@@ -996,6 +1000,22 @@ Return valid Markdown and HTML that strictly preserves the visual and structural
             </div>
             <div class="modal-actions" style="justify-content: center; margin-top: 1.25rem;">
                 <button id="closeTutorialBtn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="emailHelpPopup" class="modal hidden">
+        <div class="modal-content" style="max-width:380px; text-align:center;">
+            <h3 style="margin-bottom:0.5rem;"><i class="fas fa-question-circle"></i> Need Help?</h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.25rem;">Having trouble or have questions? Reach out to us:</p>
+            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:10px; padding:1rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                <a href="mailto:asdevelopersbd@gmail.com" style="color:var(--primary-color); font-weight:600; font-size:0.95rem; word-break:break-all; text-decoration:none;">asdevelopersbd@gmail.com</a>
+                <button id="copyEmailHelpBtn" type="button" title="Copy email" style="flex-shrink:0; width:34px; height:34px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+            <div style="margin-top:1.25rem;">
+                <button id="closeEmailHelpBtn" class="btn-text-only">Close</button>
             </div>
         </div>
     </div>

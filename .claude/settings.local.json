@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npx jest)",
       "Bash(npx jest --no-coverage)",
-      "Bash(npm uninstall uuid)"
+      "Bash(npm uninstall uuid)",
+      "Bash(xargs -I {} basename {} .traineddata)"
     ]
   }
 }

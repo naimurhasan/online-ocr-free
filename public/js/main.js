@@ -99,6 +99,17 @@ const _setupEventListeners = () => {
     if (verifyAndSendBtn) verifyAndSendBtn.addEventListener('click', handleVerifyAndSubmitJob);
     if (resendOtpBtn) resendOtpBtn.addEventListener('click', handleSendOtp);
     if (cancelEmailBtn) cancelEmailBtn.addEventListener('click', closeEmailOtpModal);
+
+    const emailHelpBtn = document.getElementById('emailHelpBtn');
+    const emailHelpPopup = document.getElementById('emailHelpPopup');
+    const closeEmailHelpBtn = document.getElementById('closeEmailHelpBtn');
+    const copyEmailHelpBtn = document.getElementById('copyEmailHelpBtn');
+    if (emailHelpBtn) emailHelpBtn.addEventListener('click', () => emailHelpPopup.classList.remove('hidden'));
+    if (closeEmailHelpBtn) closeEmailHelpBtn.addEventListener('click', () => emailHelpPopup.classList.add('hidden'));
+    if (emailHelpPopup) emailHelpPopup.addEventListener('click', (e) => { if (e.target === emailHelpPopup) emailHelpPopup.classList.add('hidden'); });
+    if (copyEmailHelpBtn) copyEmailHelpBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText('asdevelopersbd@gmail.com').then(() => showToast('Email copied!'));
+    });
     if (appAlertCancelBtn) appAlertCancelBtn.addEventListener('click', () => resolveAppAlert(false));
     if (appAlertConfirmBtn) appAlertConfirmBtn.addEventListener('click', () => resolveAppAlert(true));
     if (appAlertModal) appAlertModal.addEventListener('click', (e) => {
