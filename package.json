@@ -1,0 +1,16 @@
+{
+  "name": "online-ocr-free",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal PNG to TXT OCR wrapper around the tesseract CLI.",
+  "scripts": {
+    "ocr": "node ocr.js"
+  },
+  "keywords": [
+    "ocr",
+    "tesseract",
+    "png",
+    "txt"
+  ],
+  "license": "MIT"
+}
